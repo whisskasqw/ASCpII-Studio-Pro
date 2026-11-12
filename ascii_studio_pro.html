@@ -1,0 +1,1579 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASCII Studio Pro</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- iro.js for Color Picker -->
+    <script src="https://cdn.jsdelivr.net/npm/@jaames/iro@5"></script>
+
+    <style>
+        /* Базовые стили для плавной смены темы */
+        * { transition: background-color 0.3s ease, border-color 0.3s ease; }
+        
+        body {
+            background-color: #0e0f13;
+            background-image: radial-gradient(circle at 50% 0%, #1a1b23 0%, transparent 70%);
+            color: #e2e8f0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* --- СВЕТЛАЯ ТЕМА --- */
+        html:not(.dark) body { background-color: #f8fafc; background-image: radial-gradient(circle at 50% 0%, #e2e8f0 0%, transparent 70%); color: #0f172a; }
+        html:not(.dark) .bg-\[\#16171c\] { background-color: #ffffff; border-color: #cbd5e1; }
+        html:not(.dark) .bg-\[\#1c1d24\] { background-color: #f1f5f9; border-color: #cbd5e1; }
+        html:not(.dark) .bg-\[\#1a1b23\] { background-color: #f8fafc; border-color: #cbd5e1; }
+        html:not(.dark) .bg-\[\#0e0f13\] { background-color: #f1f5f9; border-color: #cbd5e1; }
+        html:not(.dark) .bg-\[\#272932\] { background-color: #e2e8f0; color: #334155; }
+        html:not(.dark) .border-\[\#272932\] { border-color: #cbd5e1; }
+        html:not(.dark) .text-white { color: #0f172a; }
+        html:not(.dark) .text-slate-400 { color: #64748b; }
+        html:not(.dark) .text-slate-300 { color: #475569; }
+        
+        /* Сохраняем белый текст на акцентных кнопках в светлой теме */
+        html:not(.dark) .keep-white-text { color: #ffffff !important; }
+        html:not(.dark) .keep-white-text i { color: #ffffff !important; }
+
+        /* Ползунки */
+        input[type=range] { -webkit-appearance: none; background: transparent; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; background: #272932; border-radius: 2px; }
+        html:not(.dark) input[type=range]::-webkit-slider-runnable-track { background: #cbd5e1; }
+        
+        input[type=range]::-webkit-slider-thumb { height: 14px; width: 14px; border-radius: 50%; background: #fff; cursor: pointer; -webkit-appearance: none; margin-top: -5px; transition: transform 0.1s; }
+        html:not(.dark) input[type=range]::-webkit-slider-thumb { background: #64748b; }
+        input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+        /* Анимации UI */
+        .panel-transition { 
+            transition: max-height 0.4s ease-in-out, opacity 0.3s ease, transform 0.3s ease, margin 0.3s ease, padding 0.3s ease; 
+            max-height: 700px; 
+            opacity: 1; 
+            transform: scaleY(1) translateY(0);
+            transform-origin: top; 
+            overflow: hidden; 
+        }
+        .hidden-panel { 
+            max-height: 0 !important; 
+            opacity: 0 !important; 
+            transform: scaleY(0.9) translateY(-10px) !important; 
+            margin-top: 0 !important; margin-bottom: 0 !important; 
+            padding-top: 0 !important; padding-bottom: 0 !important; 
+            border-width: 0 !important; 
+            pointer-events: none; 
+        }
+        .dock-item { transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); cursor: pointer; }
+        .dock-item:hover { transform: translateY(-4px) scale(1.05); }
+        
+        .editor-transition { transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); max-height: 0; opacity: 0; overflow: hidden; padding-top: 0; margin-top: 0; border-top-width: 0; }
+        .editor-transition.open { max-height: 300px; opacity: 1; padding-top: 0.75rem; margin-top: 0.75rem; border-top-width: 1px; }
+        
+        /* Эффект для полноэкранного режима */
+        :fullscreen #asciiViewport { border-radius: 0; }
+        :-webkit-full-screen #asciiViewport { border-radius: 0; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Верхняя панель (Header) -->
+    <header class="bg-[#16171c]/80 backdrop-blur-xl border-b border-[#272932] sticky top-0 z-50 px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shadow-[0_0_15px_rgba(37,99,235,0.4)] keep-white-text">
+                <i data-lucide="sparkles" class="w-4 h-4 text-white"></i>
+            </div>
+            <h1 class="font-bold text-sm tracking-wide text-white">ASCII Studio Pro</h1>
+        </div>
+        
+        <!-- Кнопка смены темы -->
+        <button id="themeToggleBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#272932] text-xs font-medium text-slate-300 hover:opacity-80 transition cursor-pointer">
+            <i data-lucide="sun" id="themeIcon" class="w-3.5 h-3.5"></i>
+            <span id="themeLabel">Light Theme</span>
+        </button>
+    </header>
+
+    <main class="flex-1 max-w-[1800px] w-full mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+
+        <!-- Левая колонка -->
+        <aside class="lg:col-span-4 xl:col-span-3 space-y-4 flex flex-col relative z-20">
+            
+            <!-- ПАНЕЛЬ 1: Источник -->
+            <div id="panelSource" class="bg-[#16171c] rounded-2xl border border-[#272932] p-4 shadow-xl panel-transition origin-top">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2">
+                        <button class="w-3 h-3 rounded-full bg-[#ff5f56] hover:bg-[#ff5f56]/80 transition close-panel-btn" data-target="panelSource"></button>
+                        <button class="w-3 h-3 rounded-full bg-[#ffbd2e] hover:bg-[#ffbd2e]/80 transition min-panel-btn" data-target="panelSourceContent"></button>
+                        <button class="w-3 h-3 rounded-full bg-[#27c93f] hover:bg-[#27c93f]/80 transition expand-panel-btn" data-target="panelSourceContent" title="Развернуть"></button>
+                    </div>
+                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Источник и Формат</span>
+                </div>
+
+                <div id="panelSourceContent" class="space-y-4 panel-transition origin-top">
+                    <!-- Кнопки выбора источника -->
+                    <div class="flex bg-[#0e0f13] rounded-lg p-1 border border-[#272932] text-xs font-medium">
+                        <button id="srcBtnDemo" class="flex-1 py-1.5 rounded-md bg-[#272932] text-white shadow-sm flex items-center justify-center gap-1.5 transition">
+                            <i data-lucide="box" class="w-3.5 h-3.5 text-blue-400"></i> 3D
+                        </button>
+                        <button id="srcBtnVideo" class="flex-1 py-1.5 rounded-md text-slate-400 hover:text-white flex items-center justify-center gap-1.5 transition">
+                            <i data-lucide="folder-video" class="w-3.5 h-3.5"></i> Видео
+                        </button>
+                        <button id="srcBtnPhoto" class="flex-1 py-1.5 rounded-md text-slate-400 hover:text-white flex items-center justify-center gap-1.5 transition">
+                            <i data-lucide="image" class="w-3.5 h-3.5"></i> Фото
+                        </button>
+                        <button id="srcBtnCam" class="flex-1 py-1.5 rounded-md text-slate-400 hover:text-white flex items-center justify-center gap-1.5 transition">
+                            <i data-lucide="video" class="w-3.5 h-3.5"></i> Камера
+                        </button>
+                    </div>
+                    <input type="file" id="mediaFileInput" accept="video/*,image/*" class="hidden">
+
+                    <div class="space-y-1.5 flex gap-2">
+                        <div class="flex-1 space-y-1.5">
+                            <label class="text-[10px] text-slate-400 font-medium">3D Фигура:</label>
+                            <select id="shapeSelect" class="w-full bg-[#0e0f13] border border-[#272932] rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none transition">
+                                <option value="torus">Пончик (Частицы)</option>
+                                <option value="cube">Куб (Сплошной)</option>
+                                <option value="sphere">Сфера (Сфера)</option>
+                                <option value="cylinder">Цилиндр</option>
+                                <option value="cone">Конус</option>
+                            </select>
+                        </div>
+                        <div class="flex-1 space-y-1.5">
+                            <label class="text-[10px] text-slate-400 font-medium">Формат кадра:</label>
+                            <select id="aspectSelect" class="w-full bg-[#0e0f13] border border-[#272932] rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none transition">
+                                <option value="auto">Исходный (Авто)</option>
+                                <option value="16:9">16:9 Широкий</option>
+                                <option value="4:3">4:3 Стандарт</option>
+                                <option value="1:1">1:1 Квадрат</option>
+                                <option value="9:16">9:16 Вертикальный</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Мини-плеер -->
+                    <div class="bg-[#0e0f13] rounded-xl p-2 border border-[#272932]">
+                        <div id="previewContainer" class="relative aspect-video rounded-lg overflow-hidden bg-black flex items-center justify-center border border-[#272932]/50 transition-all duration-300">
+                            <video id="videoElement" class="w-full h-full object-contain hidden" playsinline loop muted crossorigin="anonymous"></video>
+                            <img id="photoElement" class="w-full h-full object-contain hidden" crossorigin="anonymous">
+                            
+                            <!-- Наш оригинальный Canvas для процедурной графики из кружков -->
+                            <canvas id="demoCanvas" width="320" height="180" class="w-full h-full object-contain"></canvas>
+                            
+                            <div class="absolute bottom-2 left-2 bg-black/70 backdrop-blur px-2 py-1 rounded-md text-[10px] text-slate-300 border border-white/10 keep-white-text">
+                                <span id="sourceStatusLabel">Пончик из частиц</span>
+                            </div>
+                        </div>
+
+                        <!-- Элементы управления -->
+                        <div class="flex items-center justify-between mt-2 px-1">
+                            <button id="playBtn" class="bg-[#272932] text-white rounded-lg px-4 py-1.5 flex items-center gap-1.5 text-xs font-medium transition cursor-pointer">
+                                <i data-lucide="pause" id="playIcon" class="w-3.5 h-3.5 text-blue-400"></i>
+                                <span>Пауза</span>
+                            </button>
+                            <div class="flex gap-2">
+                                <button id="muteBtn" class="p-1.5 text-slate-400 hover:text-white rounded-md transition cursor-pointer">
+                                    <i data-lucide="volume-x" id="muteIcon" class="w-4 h-4"></i>
+                                </button>
+                                <button id="mirrorBtn" class="p-1.5 text-slate-400 hover:text-white rounded-md transition cursor-pointer">
+                                    <i data-lucide="flip-horizontal" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Док-панель -->
+            <div id="dockPanel" class="bg-[#16171c] rounded-2xl border border-[#272932] p-3 shadow-lg flex flex-wrap items-center gap-2 hidden-panel">
+                <span class="text-[10px] font-bold text-slate-500 w-full mb-1">СКРЫТЫЕ ОКНА:</span>
+            </div>
+
+            <!-- ПАНЕЛЬ 2: Цветовая палитра -->
+            <div id="panelColor" class="bg-[#16171c] rounded-2xl border border-[#272932] p-4 shadow-xl panel-transition origin-top">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2">
+                        <button class="w-3 h-3 rounded-full bg-[#ff5f56] hover:bg-[#ff5f56]/80 transition close-panel-btn" data-target="panelColor"></button>
+                        <button class="w-3 h-3 rounded-full bg-[#ffbd2e] hover:bg-[#ffbd2e]/80 transition min-panel-btn" data-target="panelColorContent"></button>
+                        <button class="w-3 h-3 rounded-full bg-[#27c93f] hover:bg-[#27c93f]/80 transition expand-panel-btn" data-target="panelColorContent" title="Развернуть"></button>
+                    </div>
+                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Цветовая палитра</span>
+                </div>
+
+                <div id="panelColorContent" class="space-y-2.5 panel-transition origin-top">
+                    <!-- Режим RGB -->
+                    <button data-color="rgb" class="color-mode-btn w-full px-3 py-2.5 rounded-xl border border-blue-500 bg-blue-500/10 text-white flex items-center justify-between transition">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-4 h-4 rounded-full bg-gradient-to-tr from-red-500 via-green-500 to-blue-500"></div>
+                            <span class="font-medium text-sm">Цвет из видео (RGB)</span>
+                        </div>
+                    </button>
+
+                    <!-- Режим Градиента -->
+                    <button data-color="gradient" class="color-mode-btn w-full px-3 py-2 rounded-xl border border-[#272932] bg-[#0e0f13] text-slate-400 flex items-center justify-between transition">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-4 h-4 rounded-full bg-gradient-to-r from-[#ff0055] via-[#9900ff] to-[#00e5ff]"></div>
+                            <span class="font-medium text-sm">Градиенты</span>
+                        </div>
+                    </button>
+                    
+                    <!-- Студия Градиента -->
+                    <div id="gradientStudio" class="bg-[#0e0f13] border border-[#272932] rounded-xl p-3 hidden-panel">
+                        <div id="gradientList" class="grid grid-cols-2 gap-2 mb-3"></div>
+                        <button id="addGradientBtn" class="w-full py-1.5 rounded-lg border border-[#272932] hover:border-slate-500 bg-[#16171c] text-xs text-slate-300 hover:text-white transition shadow-sm mb-3">
+                            + Добавить градиент
+                        </button>
+                        
+                        <div id="gradientEditor" class="editor-transition border-[#272932]">
+                            <div class="text-[10px] text-slate-400 mb-2 flex justify-between items-center">
+                                <span>Настройка цветов:</span>
+                                <button id="closeEditorBtn" class="text-slate-500 hover:text-white p-1 transition"><i data-lucide="x" class="w-3 h-3"></i></button>
+                            </div>
+                            <div id="colorPicker" class="flex justify-center mb-3"></div>
+                            
+                            <!-- Шкала градиента -->
+                            <div class="relative w-full h-4 rounded-md mb-2 shadow-inner cursor-pointer px-2.5 bg-[#272932]" id="gradientTrack"></div>
+                            <div class="text-[9px] text-slate-500 text-center mb-4">Потяните ползунок для перемещения.</div>
+                            
+                            <div class="flex justify-between gap-2 mt-2">
+                                <button id="addStopBtn" class="flex-1 py-1.5 rounded-lg bg-[#272932] hover:bg-slate-600 keep-white-text text-[10px] transition font-medium">+ Добавить цвет</button>
+                                <button id="removeStopBtn" class="flex-1 py-1.5 rounded-lg bg-red-900/50 hover:bg-red-600 keep-white-text text-[10px] text-red-200 transition font-medium">- Удалить цвет</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Монохромные пресеты -->
+                    <div class="grid grid-cols-2 gap-2 mt-2">
+                        <button data-color="mono-white" class="color-mode-btn px-3 py-2 rounded-xl border border-[#272932] bg-[#0e0f13] text-slate-400 flex items-center gap-2.5 transition">
+                            <div class="w-3 h-3 rounded-full bg-slate-300"></div>
+                            <span class="text-xs font-medium">Mono White</span>
+                        </button>
+                        <button data-color="mono-invert" class="color-mode-btn px-3 py-2 rounded-xl border border-[#272932] bg-[#0e0f13] text-slate-400 flex items-center gap-2.5 transition">
+                            <div class="w-3 h-3 rounded-full bg-black border border-slate-500"></div>
+                            <span class="text-xs font-medium">Mono Invert</span>
+                        </button>
+                        <button data-color="matrix" class="color-mode-btn px-3 py-2 rounded-xl border border-[#272932] bg-[#0e0f13] text-slate-400 flex items-center gap-2.5 transition">
+                            <div class="w-3 h-3 rounded-full bg-[#00ff66]"></div>
+                            <span class="text-xs font-medium">Matrix Green</span>
+                        </button>
+                        <button data-color="cyber-blue" class="color-mode-btn px-3 py-2 rounded-xl border border-[#272932] bg-[#0e0f13] text-slate-400 flex items-center gap-2.5 transition">
+                            <div class="w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_6px_#3b82f6]"></div>
+                            <span class="text-xs font-medium">Cyber Blue</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ПАНЕЛЬ 3: Настройки -->
+            <div id="panelDetails" class="bg-[#16171c] rounded-2xl border border-[#272932] p-4 shadow-xl panel-transition origin-top">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2">
+                        <button class="w-3 h-3 rounded-full bg-[#ff5f56] hover:bg-[#ff5f56]/80 transition close-panel-btn" data-target="panelDetails"></button>
+                        <button class="w-3 h-3 rounded-full bg-[#ffbd2e] hover:bg-[#ffbd2e]/80 transition min-panel-btn" data-target="panelDetailsContent"></button>
+                        <button class="w-3 h-3 rounded-full bg-[#27c93f] hover:bg-[#27c93f]/80 transition expand-panel-btn" data-target="panelDetailsContent" title="Развернуть"></button>
+                    </div>
+                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Коррекция</span>
+                </div>
+
+                <div id="panelDetailsContent" class="space-y-4 panel-transition origin-top">
+                    <!-- Разрешение (Ширина) -->
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-slate-400">Ширина (Символов)</span>
+                            <span id="colVal" class="text-white font-mono">120</span>
+                        </div>
+                        <input type="range" id="colSlider" min="40" max="250" value="120" class="w-full">
+                    </div>
+
+                    <!-- Коррекция -->
+                    <div class="pt-3 border-t border-[#272932] space-y-4">
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-[11px]"><span class="text-slate-400">Контраст</span><span id="contrastVal" class="text-white">1.2x</span></div>
+                            <input type="range" id="contrastSlider" min="0.5" max="3.0" value="1.2" step="0.1" class="w-full">
+                        </div>
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-[11px]"><span class="text-slate-400">Яркость</span><span id="brightnessVal" class="text-white">0</span></div>
+                            <input type="range" id="brightnessSlider" min="-100" max="100" value="0" step="5" class="w-full">
+                        </div>
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-[11px]"><span class="text-slate-400">Насыщенность</span><span id="saturationVal" class="text-white">100%</span></div>
+                            <input type="range" id="saturationSlider" min="0" max="250" value="100" step="10" class="w-full">
+                        </div>
+                        <div class="space-y-1 border-t border-[#272932] pt-2">
+                            <div class="flex justify-between text-[11px]"><span class="text-slate-400 font-medium">Свечение (Glow)</span><span id="glowVal" class="text-white">0px</span></div>
+                            <input type="range" id="glowSlider" min="0" max="25" value="0" step="1" class="w-full">
+                        </div>
+                        
+                        <div class="flex gap-2">
+                            <div class="flex-1 space-y-1">
+                                <span class="text-[9px] text-slate-400">Стиль Glow</span>
+                                <select id="glowStyle" class="w-full bg-[#0e0f13] border border-[#272932] rounded px-1.5 py-1 text-[10px] text-white outline-none">
+                                    <option value="normal">Стандарт</option>
+                                    <option value="blink">Мигание</option>
+                                    <option value="sparkle">Мерцание</option>
+                                    <option value="strong">Сильное свечение</option>
+                                    <option value="volume">Объемное свечение</option>
+                                </select>
+                            </div>
+                            <div class="flex-1 space-y-1">
+                                <span class="text-[9px] text-slate-400">Цвет Glow</span>
+                                <div class="flex gap-1.5 items-center">
+                                    <select id="glowColorType" class="flex-1 bg-[#0e0f13] border border-[#272932] rounded px-1.5 py-1 text-[10px] text-white outline-none">
+                                        <option value="auto">Свой для каждого</option>
+                                        <option value="custom">Один цвет (Палитра)</option>
+                                    </select>
+                                    <div id="glowColorPickerWrapper" class="w-6 h-6 rounded overflow-hidden relative hidden shrink-0 border border-[#272932]">
+                                        <input type="color" id="glowColorPicker" value="#ffffff" class="absolute -top-2 -left-2 w-10 h-10 cursor-pointer">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ПАНЕЛЬ 4: Деформация -->
+            <div id="panelDeform" class="bg-[#16171c] rounded-2xl border border-[#272932] p-4 shadow-xl panel-transition origin-top">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2">
+                        <button class="w-3 h-3 rounded-full bg-[#ff5f56] hover:bg-[#ff5f56]/80 transition close-panel-btn" data-target="panelDeform"></button>
+                        <button class="w-3 h-3 rounded-full bg-[#ffbd2e] hover:bg-[#ffbd2e]/80 transition min-panel-btn" data-target="panelDeformContent"></button>
+                        <button class="w-3 h-3 rounded-full bg-[#27c93f] hover:bg-[#27c93f]/80 transition expand-panel-btn" data-target="panelDeformContent" title="Развернуть"></button>
+                    </div>
+                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Деформация</span>
+                </div>
+
+                <div id="panelDeformContent" class="space-y-4 panel-transition origin-top">
+                    <!-- Тумблер ВКЛ/ВЫКЛ -->
+                    <div class="flex items-center justify-between pb-3 border-b border-[#272932]">
+                        <span class="text-[11px] text-slate-300 font-medium">Эффекты включены</span>
+                        <label class="relative cursor-pointer">
+                            <input type="checkbox" id="deformToggle" class="sr-only peer" checked>
+                            <div class="w-7 h-4 bg-[#272932] rounded-full peer peer-checked:after:translate-x-3 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-500"></div>
+                        </label>
+                    </div>
+
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-[11px]"><span class="text-slate-400">Хаос (Тряска)</span><span id="deformChaosVal" class="text-white">0</span></div>
+                        <input type="range" id="deformChaosSlider" min="0" max="60" value="0" class="w-full">
+                    </div>
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-[11px]"><span class="text-slate-400">Волны</span><span id="deformWaveVal" class="text-white">0</span></div>
+                        <div class="flex items-center gap-3">
+                            <input type="range" id="deformWaveSlider" min="0" max="80" value="0" class="flex-1">
+                            <!-- Джойстик направления волны -->
+                            <div id="waveDial" class="w-7 h-7 rounded-full border border-[#272932] bg-[#0e0f13] relative cursor-pointer flex-shrink-0 shadow-inner group">
+                                <div id="waveDialKnob" class="w-2.5 h-2.5 bg-blue-500 rounded-full absolute top-1/2 left-1/2 shadow-[0_0_5px_#3b82f6] transition-transform duration-75" style="transform: translate(-50%, -50%) translate(10px, 0px);"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-[11px]"><span class="text-slate-400">Диффузия</span><span id="deformDiffVal" class="text-white">0</span></div>
+                        <input type="range" id="deformDiffSlider" min="0" max="100" value="0" class="w-full mb-1">
+                        <select id="deformDiffType" class="w-full bg-[#0e0f13] border border-[#272932] rounded px-1.5 py-1 text-[10px] text-white outline-none">
+                            <option value="melt">Плавление (Вода)</option>
+                            <option value="glitch">Глитч (Блоки)</option>
+                            <option value="static">ТВ-помехи (Шум)</option>
+                        </select>
+                    </div>
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-[11px]"><span class="text-slate-400">Линза (Вектор)</span><span id="deformLensVal" class="text-white">0</span></div>
+                        <input type="range" id="deformLensSlider" min="-100" max="100" value="0" class="w-full">
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Правая колонка -->
+        <section class="lg:col-span-8 xl:col-span-9 flex flex-col h-full space-y-4 relative z-10">
+            
+            <div class="relative flex-1 bg-[#16171c] rounded-2xl border border-[#272932] overflow-hidden flex flex-col justify-between min-h-[540px] shadow-2xl">
+                
+                <div class="bg-[#1c1d24] border-b border-[#272932] px-4 py-2.5 flex items-center justify-between text-xs">
+                    <div class="flex items-center gap-2 w-1/4">
+                        <button class="w-3 h-3 rounded-full bg-[#ff5f56]"></button>
+                        <button class="w-3 h-3 rounded-full bg-[#ffbd2e]"></button>
+                        <button class="w-3 h-3 rounded-full bg-[#27c93f] fullscreen-btn" title="На весь экран"></button>
+                    </div>
+                    <div class="flex flex-1 items-center justify-center gap-2 text-slate-400 font-medium">
+                        <i data-lucide="terminal" class="w-3.5 h-3.5 text-blue-500"></i>
+                        <span id="windowTitleLabel">Холст рендеринга — Цвет из видео</span>
+                    </div>
+                    
+                    <!-- Переключатель фона холста (виден только в светлой теме) -->
+                    <div class="flex items-center justify-end gap-3 w-1/4">
+                        <label id="canvasBgToggleWrapper" class="items-center gap-2 cursor-pointer hidden">
+                            <span class="text-[10px] text-slate-400 font-medium">Фон:</span>
+                            <div class="relative">
+                                <input type="checkbox" id="canvasBgToggle" class="sr-only peer">
+                                <div class="w-7 h-4 bg-[#272932] rounded-full peer peer-checked:after:translate-x-3 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-slate-400"></div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Контейнер для ASCII-канваса -->
+                <div id="asciiViewport" class="relative flex-1 flex items-center justify-center p-4 overflow-hidden bg-[#050508]">
+                    <canvas id="asciiOutputCanvas" class="max-w-full max-h-[75vh] object-contain rounded"></canvas>
+                </div>
+
+                <!-- Нижняя панель экспорта и записи -->
+                <div class="bg-[#1a1b23] border-t border-[#272932] px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2 text-xs">
+                            <span class="text-slate-400">Формат:</span>
+                            <select id="exportFormatSelect" class="bg-[#0e0f13] border border-[#272932] rounded text-white px-2 py-1 outline-none">
+                                <option value="png">PNG</option>
+                                <option value="jpg">JPG</option>
+                                <option value="webp">WEBP</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-2 text-xs">
+                            <span class="text-slate-400">Качество:</span>
+                            <select id="exportScaleSelect" class="bg-[#0e0f13] border border-[#272932] rounded text-white px-2 py-1 outline-none">
+                                <option value="1">SD (Оригинал)</option>
+                                <option value="2" selected>Full HD (2x)</option>
+                                <option value="3">2K (3x)</option>
+                                <option value="4">4K (4x)</option>
+                            </select>
+                        </div>
+                        <div class="text-[10px] font-mono text-slate-400 flex flex-col leading-tight ml-2">
+                            <span id="exportPxLabel">1920x1080 px</span>
+                            <span id="exportMbLabel">~1.2 MB</span>
+                        </div>
+                        
+                        <!-- FPS Control & Display (New) -->
+                        <div id="fpsContainer" class="flex items-center gap-3 border-l border-[#272932] pl-4 ml-1">
+                            <div class="flex items-center gap-1.5 text-xs">
+                                <span class="text-slate-400">FPS:</span>
+                                <select id="fpsSelect" class="bg-[#0e0f13] border border-[#272932] rounded text-white px-1.5 py-1 outline-none font-mono text-[10px]">
+                                    <option value="12">12</option>
+                                    <option value="24">24</option>
+                                    <option value="30">30</option>
+                                    <option value="60" selected>60</option>
+                                    <option value="0">MAX</option>
+                                </select>
+                            </div>
+                            <div class="text-[10px] font-mono flex items-center gap-1.5 bg-[#0e0f13] border border-[#272932] px-2 py-1 rounded shadow-inner">
+                                <i data-lucide="activity" id="fpsIcon" class="w-3 h-3 text-green-400"></i>
+                                <span id="currentFpsLabel" class="text-white w-[42px] text-right">60 FPS</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <!-- Кнопки камеры (скрыты по умолчанию) -->
+                        <div id="cameraControls" class="flex gap-2 hidden mr-2">
+                            <button id="takePhotoBtn" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 keep-white-text text-xs font-medium flex items-center gap-1.5 transition shadow-[0_0_10px_rgba(5,150,105,0.4)]">
+                                <i data-lucide="camera" class="w-3.5 h-3.5"></i> Фото
+                            </button>
+                            <button id="recordBtn" class="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 keep-white-text text-xs font-medium flex items-center gap-1.5 transition">
+                                <i data-lucide="video" class="w-3.5 h-3.5"></i> REC
+                            </button>
+                        </div>
+
+                        <button id="copyTxtBtn" class="px-3 py-1.5 rounded-lg bg-[#272932] text-white text-xs flex items-center gap-1.5 transition">
+                            <i data-lucide="copy" class="w-3.5 h-3.5"></i> TXT
+                        </button>
+                        <button id="downloadBtn" class="px-4 py-1.5 rounded-lg bg-blue-600 keep-white-text text-xs font-medium shadow-[0_0_10px_rgba(37,99,235,0.4)] transition flex items-center gap-1.5">
+                            <i data-lucide="download" class="w-3.5 h-3.5"></i> Скачать
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex justify-between items-center text-[10px] text-slate-500 font-mono px-2">
+                <span id="toastMessage" class="text-green-500 opacity-0 transition-opacity">Готово!</span>
+                <span>ASCII.STUDIO PRO // V4 ENGINE</span>
+            </div>
+        </section>
+    </main>
+
+    <!-- Плавающая кнопка Галереи -->
+    <button id="openGalleryBtn" class="hidden fixed bottom-8 right-8 z-[60] bg-blue-600 text-white p-3.5 rounded-full shadow-[0_0_20px_rgba(37,99,235,0.6)] hover:scale-110 transition-transform keep-white-text cursor-pointer">
+        <i data-lucide="images" class="w-6 h-6"></i>
+        <span id="galleryBadge" class="absolute -top-1 -right-1 bg-[#ff5f56] text-white text-[11px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-[#16171c]">1</span>
+    </button>
+
+    <!-- Модальное окно Галереи -->
+    <div id="galleryModal" class="fixed inset-0 z-[100] bg-[#050508]/95 backdrop-blur-md hidden flex-col items-center justify-center opacity-0 transition-opacity duration-300">
+        <div class="absolute top-6 right-6 flex gap-4">
+            <button id="downloadGalleryBtn" class="text-slate-300 hover:text-white transition cursor-pointer p-2 bg-[#16171c] rounded-full border border-[#272932]"><i data-lucide="download" class="w-6 h-6"></i></button>
+            <button id="closeGalleryBtn" class="text-slate-300 hover:text-[#ff5f56] transition cursor-pointer p-2 bg-[#16171c] rounded-full border border-[#272932]"><i data-lucide="x" class="w-6 h-6"></i></button>
+        </div>
+        <div class="relative w-full max-w-6xl flex items-center justify-center p-4">
+            <button id="prevGalleryBtn" class="absolute left-4 lg:left-10 p-3 text-slate-500 hover:text-white transition cursor-pointer bg-[#16171c]/50 rounded-full border border-transparent hover:border-[#272932]"><i data-lucide="chevron-left" class="w-10 h-10"></i></button>
+            <img id="galleryImage" class="max-h-[80vh] max-w-full object-contain shadow-2xl rounded-xl border border-[#272932]" src="">
+            <button id="nextGalleryBtn" class="absolute right-4 lg:right-10 p-3 text-slate-500 hover:text-white transition cursor-pointer bg-[#16171c]/50 rounded-full border border-transparent hover:border-[#272932]"><i data-lucide="chevron-right" class="w-10 h-10"></i></button>
+        </div>
+        <div id="galleryCounter" class="absolute bottom-8 text-slate-400 font-mono text-sm tracking-widest bg-[#16171c] px-4 py-1.5 rounded-full border border-[#272932]">1 / 1</div>
+    </div>
+
+    <canvas id="samplingCanvas" class="hidden"></canvas>
+
+    <script>
+        lucide.createIcons();
+
+        // --- Глобальное состояние ---
+        const state = {
+            source: 'demo', 
+            shape: 'torus',
+            aspect: 'auto',
+            mirror: false,
+            colorMode: 'rgb',
+            gradients: [
+                [{c:'#ff0055', p:0}, {c:'#9900ff', p:0.5}, {c:'#00e5ff', p:1}],
+                [{c:'#ffaa00', p:0}, {c:'#ff0055', p:0.5}, {c:'#aa00ff', p:1}],
+                [{c:'#ccff00', p:0}, {c:'#00ff66', p:0.5}, {c:'#00e5ff', p:1}],
+                [{c:'#00e5ff', p:0}, {c:'#0055ff', p:0.5}, {c:'#0000ff', p:1}]
+            ],
+            activeGrad: 0,
+            charset: " .:-=+*#%@",
+            columns: 120,
+            fontSize: 12,
+            fontAspect: 0.55,
+            contrast: 1.2,
+            brightness: 0,
+            saturation: 1.0,
+            glow: 0,
+            glowStyle: 'normal',
+            glowColor: 'auto',
+            deformEnabled: true,
+            deformChaos: 0,
+            deformWave: 0,
+            deformWaveAngle: 0, // Угол волны в радианах
+            deformDiff: 0,
+            deformDiffType: 'melt',
+            deformLens: 0,
+            targetFps: 60, // Добавлено целевое значение FPS
+            lastAsciiText: '',
+            webcamStream: null,
+            lightTheme: false,
+            canvasBgWhite: false,
+            paused: false,
+            gallery: [], // Массив для фото
+            galleryIndex: 0
+        };
+
+        // --- Зеленая кнопка полноэкранного режима ---
+        document.querySelectorAll('.fullscreen-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const container = document.getElementById('asciiViewport');
+                if (!document.fullscreenElement) {
+                    container.requestFullscreen().catch(err => console.log(err));
+                } else {
+                    document.exitFullscreen();
+                }
+            });
+        });
+
+        // --- Тема ---
+        const themeBtn = document.getElementById('themeToggleBtn');
+        const themeIcon = document.getElementById('themeIcon');
+        const themeLabel = document.getElementById('themeLabel');
+        const canvasBgToggleWrapper = document.getElementById('canvasBgToggleWrapper');
+        const canvasBgToggle = document.getElementById('canvasBgToggle');
+
+        themeBtn.addEventListener('click', () => {
+            state.lightTheme = !state.lightTheme;
+            if (state.lightTheme) {
+                document.documentElement.classList.remove('dark');
+                themeIcon.setAttribute('data-lucide', 'moon');
+                themeLabel.innerText = 'Dark Theme';
+                canvasBgToggleWrapper.style.display = 'flex';
+            } else {
+                document.documentElement.classList.add('dark');
+                themeIcon.setAttribute('data-lucide', 'sun');
+                themeLabel.innerText = 'Light Theme';
+                canvasBgToggleWrapper.style.display = 'none';
+                state.canvasBgWhite = false; // Сброс фона холста
+                canvasBgToggle.checked = false;
+            }
+            lucide.createIcons();
+        });
+
+        canvasBgToggle.addEventListener('change', (e) => {
+            state.canvasBgWhite = e.target.checked;
+        });
+
+        // --- Панели (Док) ---
+        const dockPanel = document.getElementById('dockPanel');
+        
+        // Карта иконок для каждой панели
+        const panelIcons = {
+            'panelSource': 'monitor-play',
+            'panelColor': 'palette',
+            'panelDetails': 'sliders-horizontal',
+            'panelDeform': 'zap'
+        };
+
+        document.querySelectorAll('.close-panel-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const targetId = btn.getAttribute('data-target');
+                const panel = document.getElementById(targetId);
+                const title = panel.querySelector('.uppercase').innerText;
+                const iconName = panelIcons[targetId] || 'layout-panel-top';
+                
+                panel.classList.add('hidden-panel');
+                setTimeout(() => panel.style.display = 'none', 400);
+
+                const dockItem = document.createElement('button');
+                dockItem.className = 'dock-item bg-[#1c1d24] border border-[#272932] hover:border-slate-500 hover:bg-[#272932] px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white flex items-center gap-2 shadow-md transition-all';
+                dockItem.innerHTML = `<i data-lucide="${iconName}" class="w-3.5 h-3.5 text-blue-400"></i> <span>${title}</span>`;
+                dockItem.onclick = () => {
+                    panel.style.display = '';
+                    setTimeout(() => panel.classList.remove('hidden-panel'), 10);
+                    dockItem.remove();
+                    if (dockPanel.children.length <= 1) dockPanel.classList.add('hidden-panel');
+                };
+                dockPanel.appendChild(dockItem);
+                lucide.createIcons();
+                dockPanel.classList.remove('hidden-panel');
+            });
+        });
+
+        document.querySelectorAll('.min-panel-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.getElementById(btn.getAttribute('data-target')).classList.toggle('hidden-panel');
+            });
+        });
+
+        document.querySelectorAll('.expand-panel-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.getElementById(btn.getAttribute('data-target')).classList.remove('hidden-panel');
+            });
+        });
+
+        // --- Источники ---
+        const videoElement = document.getElementById('videoElement');
+        const photoElement = document.getElementById('photoElement');
+        const demoCanvas = document.getElementById('demoCanvas');
+        const demoCtx = demoCanvas.getContext('2d');
+        const mediaFileInput = document.getElementById('mediaFileInput');
+        const cameraControls = document.getElementById('cameraControls');
+
+        function stopCamera() {
+            if (state.webcamStream) {
+                state.webcamStream.getTracks().forEach(t => t.stop());
+                state.webcamStream = null;
+            }
+            cameraControls.classList.add('hidden');
+        }
+
+        function updateSourceBtns(activeId) {
+            ['srcBtnDemo', 'srcBtnVideo', 'srcBtnPhoto', 'srcBtnCam'].forEach(id => {
+                const b = document.getElementById(id);
+                b.className = b.className.replace('bg-[#272932] text-white shadow-sm', 'text-slate-400');
+                if (id === activeId) b.className = b.className.replace('text-slate-400', 'bg-[#272932] text-white shadow-sm');
+            });
+        }
+
+        document.getElementById('srcBtnDemo').onclick = () => {
+            stopCamera(); videoElement.pause(); videoElement.classList.add('hidden'); photoElement.classList.add('hidden');
+            demoCanvas.classList.remove('hidden'); state.source = 'demo'; updateSourceBtns('srcBtnDemo');
+            document.getElementById('fpsContainer').style.display = 'flex'; // Показываем FPS для 3D
+        };
+
+        document.getElementById('shapeSelect').onchange = (e) => { state.shape = e.target.value; };
+        
+        document.getElementById('mirrorBtn').onclick = () => { 
+            state.mirror = !state.mirror; 
+            document.getElementById('mirrorBtn').classList.toggle('text-blue-500', state.mirror);
+            document.getElementById('mirrorBtn').classList.toggle('text-slate-400', !state.mirror);
+            
+            // Отзеркаливаем исходные слои визуально
+            const tf = state.mirror ? 'scaleX(-1)' : 'none';
+            document.getElementById('videoElement').style.transform = tf;
+            document.getElementById('photoElement').style.transform = tf;
+            document.getElementById('demoCanvas').style.transform = tf;
+        };
+
+        document.getElementById('srcBtnVideo').onclick = () => {
+            mediaFileInput.accept = 'video/*';
+            mediaFileInput.click();
+        };
+        
+        document.getElementById('srcBtnPhoto').onclick = () => {
+            mediaFileInput.accept = 'image/*';
+            mediaFileInput.click();
+        };
+
+        mediaFileInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            stopCamera(); demoCanvas.classList.add('hidden');
+            const url = URL.createObjectURL(file);
+            
+            if (file.type.startsWith('video/')) {
+                photoElement.classList.add('hidden');
+                videoElement.muted = true; // Принудительно глушим звук для автовоспроизведения
+                videoElement.src = url; 
+                videoElement.classList.remove('hidden'); 
+                videoElement.play().catch(err => console.log("Video play error:", err));
+                state.source = 'video'; updateSourceBtns('srcBtnVideo');
+                document.getElementById('fpsContainer').style.display = 'flex'; // Показываем FPS для видео
+            } else {
+                videoElement.pause(); videoElement.classList.add('hidden');
+                photoElement.src = url; photoElement.classList.remove('hidden');
+                state.source = 'photo'; updateSourceBtns('srcBtnPhoto');
+                document.getElementById('fpsContainer').style.display = 'none'; // Скрываем FPS для фото
+            }
+        };
+
+        document.getElementById('srcBtnCam').onclick = async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({video: true});
+                stopCamera(); state.webcamStream = stream;
+                demoCanvas.classList.add('hidden'); photoElement.classList.add('hidden');
+                videoElement.srcObject = stream; videoElement.classList.remove('hidden'); videoElement.play();
+                state.source = 'webcam'; updateSourceBtns('srcBtnCam');
+                cameraControls.classList.remove('hidden'); // Показываем кнопки записи снизу
+                document.getElementById('fpsContainer').style.display = 'flex'; // Показываем FPS для веб-камеры
+            } catch(e) { console.error("Нет камеры"); }
+        };
+
+        // --- Кнопка Паузы / Плей ---
+        document.getElementById('playBtn').onclick = () => {
+            state.paused = !state.paused;
+            const btnSpan = document.getElementById('playBtn').querySelector('span');
+            const playIcon = document.getElementById('playIcon');
+            
+            if (state.paused) {
+                if (videoElement.src || videoElement.srcObject) videoElement.pause();
+                playIcon.setAttribute('data-lucide', 'play');
+                btnSpan.innerText = 'Плей';
+            } else {
+                if (videoElement.src || videoElement.srcObject) videoElement.play();
+                playIcon.setAttribute('data-lucide', 'pause');
+                btnSpan.innerText = 'Пауза';
+            }
+            lucide.createIcons();
+        };
+
+        // --- Камера (Фото) и Галерея ---
+        document.getElementById('takePhotoBtn').onclick = () => {
+            // Создаем временный Canvas, чтобы отрендерить результат с правильным фоном
+            const exportCanvas = document.createElement('canvas');
+            exportCanvas.width = asciiOutputCanvas.width;
+            exportCanvas.height = asciiOutputCanvas.height;
+            const ctx = exportCanvas.getContext('2d');
+            ctx.fillStyle = (state.lightTheme && state.canvasBgWhite) ? '#ffffff' : '#050508';
+            ctx.fillRect(0,0,exportCanvas.width, exportCanvas.height);
+            ctx.drawImage(asciiOutputCanvas, 0, 0);
+            
+            // Сохраняем в галерею
+            const dataUrl = exportCanvas.toDataURL('image/png', 1.0);
+            state.gallery.push(dataUrl);
+            
+            // Показываем плавающую кнопку галереи
+            const fab = document.getElementById('openGalleryBtn');
+            fab.classList.remove('hidden');
+            document.getElementById('galleryBadge').innerText = state.gallery.length;
+            
+            // Анимация тоста (сообщения)
+            const toast = document.getElementById('toastMessage');
+            toast.innerText = 'Снимок сохранен в Галерею!';
+            toast.style.opacity = 1;
+            setTimeout(() => { toast.style.opacity = 0; setTimeout(() => toast.innerText = 'Готово!', 300); }, 2500);
+            
+            // Эффект вспышки на канвасе
+            const vp = document.getElementById('asciiViewport');
+            const oldBg = vp.style.backgroundColor;
+            vp.style.backgroundColor = '#ffffff';
+            setTimeout(() => vp.style.backgroundColor = oldBg, 50);
+        };
+
+        const updateGalleryView = () => {
+            document.getElementById('galleryImage').src = state.gallery[state.galleryIndex];
+            document.getElementById('galleryCounter').innerText = `${state.galleryIndex + 1} / ${state.gallery.length}`;
+        };
+
+        document.getElementById('openGalleryBtn').onclick = () => {
+            if (state.gallery.length === 0) return;
+            state.galleryIndex = state.gallery.length - 1; // Показываем последнее фото
+            updateGalleryView();
+            const modal = document.getElementById('galleryModal');
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+        };
+
+        document.getElementById('closeGalleryBtn').onclick = () => {
+            const modal = document.getElementById('galleryModal');
+            modal.classList.add('opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.style.display = 'none';
+            }, 300);
+        };
+
+        document.getElementById('prevGalleryBtn').onclick = () => {
+            state.galleryIndex = (state.galleryIndex - 1 + state.gallery.length) % state.gallery.length;
+            updateGalleryView();
+        };
+        
+        document.getElementById('nextGalleryBtn').onclick = () => {
+            state.galleryIndex = (state.galleryIndex + 1) % state.gallery.length;
+            updateGalleryView();
+        };
+
+        document.getElementById('downloadGalleryBtn').onclick = () => {
+            const link = document.createElement('a');
+            link.download = `ascii_photo_${Date.now()}.png`;
+            link.href = state.gallery[state.galleryIndex];
+            link.click();
+        };
+
+        // --- Цвета и Градиенты ---
+        let colorPicker;
+        let activeStopIdx = 0;
+        let isDraggingStop = false;
+        
+        const buildGradientCss = (stops) => {
+            const sorted = [...stops].sort((a,b) => a.p - b.p);
+            return `linear-gradient(to right, ${sorted.map(s => `${s.c} ${s.p * 100}%`).join(', ')})`;
+        };
+        
+        const renderGradientList = () => {
+            const list = document.getElementById('gradientList');
+            if(!list) return;
+            list.innerHTML = '';
+            state.gradients.forEach((grad, idx) => {
+                const btn = document.createElement('button');
+                // Стиль градиентов без грубых рамок, красивое выделение через ring
+                btn.className = `h-10 rounded-xl overflow-hidden transition-all duration-300 relative cursor-pointer ${state.activeGrad === idx ? 'scale-[1.05] z-10 ring-2 ring-white ring-offset-2 ring-offset-[#0e0f13] shadow-lg' : 'scale-100 hover:scale-[1.02] shadow-sm'}`;
+                btn.style.background = buildGradientCss(grad);
+                btn.onclick = () => {
+                    state.activeGrad = idx;
+                    renderGradientList();
+                    updateGradientEditor();
+                };
+                
+                // Кнопка удаления для созданных пользователем градиентов
+                if (idx >= 4 && state.activeGrad === idx) {
+                    const del = document.createElement('div');
+                    del.className = 'absolute -top-1 -right-1 bg-red-500 rounded-full w-5 h-5 flex items-center justify-center text-white cursor-pointer shadow-md hover:bg-red-600 transition-all scale-[0.8] hover:scale-100';
+                    del.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18M6 6l12 12"></path></svg>`;
+                    del.onclick = (e) => {
+                        e.stopPropagation();
+                        state.gradients.splice(idx, 1);
+                        state.activeGrad = Math.max(0, idx - 1);
+                        renderGradientList();
+                        updateGradientEditor();
+                    };
+                    btn.appendChild(del);
+                }
+                list.appendChild(btn);
+            });
+        };
+
+        const renderGradientTrack = () => {
+            const track = document.getElementById('gradientTrack');
+            if(!track) return;
+            const stops = state.gradients[state.activeGrad];
+            track.style.background = buildGradientCss(stops);
+            track.innerHTML = '';
+            
+            const updateThumbsVisuals = () => {
+                Array.from(track.children).forEach((thumb, i) => {
+                    if (i === activeStopIdx) {
+                        thumb.style.borderColor = '#ffffff';
+                        thumb.style.boxShadow = '0 0 0 2px #0e0f13, 0 0 0 3.5px #ffffff, 0 4px 10px rgba(0,0,0,0.5)';
+                        thumb.style.transform = 'translateY(-50%) scale(1.3)';
+                        thumb.style.zIndex = 10;
+                    } else {
+                        thumb.style.borderColor = '#cbd5e1';
+                        thumb.style.boxShadow = '0 2px 4px rgba(0,0,0,0.5)';
+                        thumb.style.transform = 'translateY(-50%) scale(1)';
+                        thumb.style.zIndex = 5;
+                    }
+                });
+            };
+
+            stops.forEach((stop, idx) => {
+                const thumb = document.createElement('div');
+                // Маркер в стиле "колечко", как на палитре
+                thumb.className = `absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-[2.5px] cursor-pointer -ml-2 transition-transform hover:scale-110 box-border`;
+                thumb.style.left = `${stop.p * 100}%`;
+                thumb.style.backgroundColor = stop.c;
+                
+                if (idx === activeStopIdx) {
+                    thumb.style.borderColor = '#ffffff';
+                    // Черный сужающийся контур вокруг активного маркера
+                    thumb.style.boxShadow = '0 0 0 2px #0e0f13, 0 0 0 3.5px #ffffff, 0 4px 10px rgba(0,0,0,0.5)';
+                    thumb.style.transform = 'translateY(-50%) scale(1.3)';
+                    thumb.style.zIndex = 10;
+                } else {
+                    thumb.style.borderColor = '#cbd5e1';
+                    thumb.style.boxShadow = '0 2px 4px rgba(0,0,0,0.5)';
+                    thumb.style.transform = 'translateY(-50%) scale(1)';
+                    thumb.style.zIndex = 5;
+                }
+
+                const startDrag = (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    activeStopIdx = idx;
+                    isDraggingStop = true;
+                    colorPicker.color.hexString = stop.c;
+                    updateThumbsVisuals();
+                };
+
+                // Удаление по двойному клику
+                thumb.ondblclick = (e) => {
+                    e.stopPropagation();
+                    if (state.gradients[state.activeGrad].length > 2) {
+                        state.gradients[state.activeGrad].splice(idx, 1);
+                        activeStopIdx = 0;
+                        colorPicker.color.hexString = state.gradients[state.activeGrad][0].c;
+                        renderGradientTrack();
+                        renderGradientList();
+                    }
+                };
+
+                thumb.onmousedown = startDrag;
+                thumb.ontouchstart = startDrag;
+                track.appendChild(thumb);
+            });
+        };
+
+        const updateGradientEditor = () => {
+            if(!colorPicker) return;
+            document.getElementById('gradientEditor').classList.add('open');
+            activeStopIdx = 0; 
+            colorPicker.color.hexString = state.gradients[state.activeGrad][0].c;
+            renderGradientTrack();
+        };
+
+        const initColorPicker = () => {
+            if(colorPicker) return;
+            colorPicker = new iro.ColorPicker('#colorPicker', {
+                width: 140, color: state.gradients[state.activeGrad][0].c, layoutDirection: 'horizontal',
+                layout: [{ component: iro.ui.Wheel }, { component: iro.ui.Slider, options: { sliderType: 'value' } }]
+            });
+            
+            colorPicker.on('color:change', (color) => {
+                state.gradients[state.activeGrad][activeStopIdx].c = color.hexString;
+                renderGradientTrack();
+                renderGradientList(); // Обновляем миниатюру сразу
+            });
+
+            const track = document.getElementById('gradientTrack');
+            
+            const moveStop = (clientX) => {
+                if(!isDraggingStop || activeStopIdx === null) return;
+                const rect = track.getBoundingClientRect();
+                let p = (clientX - rect.left) / rect.width;
+                p = Math.max(0, Math.min(1, p)); // Позволяем двигать по всей ширине
+                state.gradients[state.activeGrad][activeStopIdx].p = p;
+                
+                // Плавное скольжение: обновляем стили напрямую без полного ререндера DOM
+                track.style.background = buildGradientCss(state.gradients[state.activeGrad]);
+                if (track.children[activeStopIdx]) {
+                    track.children[activeStopIdx].style.left = `${p * 100}%`;
+                }
+                
+                // Обновляем миниатюру без моргания
+                const listBtns = document.getElementById('gradientList').children;
+                if(listBtns[state.activeGrad]) {
+                    listBtns[state.activeGrad].style.background = track.style.background;
+                }
+            };
+
+            document.addEventListener('mousemove', e => moveStop(e.clientX));
+            document.addEventListener('touchmove', e => { if(isDraggingStop) moveStop(e.touches[0].clientX); }, {passive: true});
+            document.addEventListener('mouseup', () => { isDraggingStop = false; });
+            document.addEventListener('touchend', () => { isDraggingStop = false; });
+
+            track.onmousedown = (e) => {
+                const rect = track.getBoundingClientRect();
+                let p = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                state.gradients[state.activeGrad].push({c: colorPicker.color.hexString, p: p});
+                activeStopIdx = state.gradients[state.activeGrad].length - 1;
+                renderGradientTrack();
+                renderGradientList();
+            };
+
+            document.getElementById('addStopBtn').onclick = () => {
+                state.gradients[state.activeGrad].push({c: colorPicker.color.hexString, p: 0.5});
+                activeStopIdx = state.gradients[state.activeGrad].length - 1;
+                renderGradientTrack();
+                renderGradientList();
+            };
+
+            document.getElementById('removeStopBtn').onclick = () => {
+                if (state.gradients[state.activeGrad].length > 2 && activeStopIdx !== null) {
+                    state.gradients[state.activeGrad].splice(activeStopIdx, 1);
+                    activeStopIdx = 0;
+                    colorPicker.color.hexString = state.gradients[state.activeGrad][0].c;
+                    renderGradientTrack();
+                    renderGradientList();
+                }
+            };
+
+            document.getElementById('addGradientBtn').onclick = () => {
+                state.gradients.push([{c:'#64748b',p:0}, {c:'#e2e8f0',p:1}]);
+                state.activeGrad = state.gradients.length - 1;
+                renderGradientList();
+                updateGradientEditor();
+            };
+
+            document.getElementById('closeEditorBtn').onclick = () => {
+                document.getElementById('gradientEditor').classList.remove('open');
+            };
+
+            renderGradientList();
+        };
+
+        document.querySelectorAll('.color-mode-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.color-mode-btn').forEach(b => {
+                    b.classList.remove('border-blue-500', 'bg-blue-500/10');
+                    b.classList.add('border-[#272932]', 'bg-[#0e0f13]');
+                    const span = b.querySelector('span');
+                    if(span) span.classList.remove('text-white');
+                });
+                btn.classList.add('border-blue-500', 'bg-blue-500/10');
+                btn.classList.remove('border-[#272932]', 'bg-[#0e0f13]');
+                const span = btn.querySelector('span');
+                if(span) span.classList.add('text-white');
+                
+                state.colorMode = btn.getAttribute('data-color');
+                
+                const gradStudio = document.getElementById('gradientStudio');
+                if (state.colorMode === 'gradient') { gradStudio.classList.remove('hidden-panel'); initColorPicker(); } 
+                else { gradStudio.classList.add('hidden-panel'); }
+            });
+        });
+
+        // --- Настройки FX ---
+        document.getElementById('aspectSelect').onchange = e => { 
+            state.aspect = e.target.value; 
+            const container = document.getElementById('previewContainer');
+            if (state.aspect === 'auto') {
+                container.style.aspectRatio = '16 / 9'; 
+            } else {
+                container.style.aspectRatio = state.aspect.replace(':', ' / ');
+            }
+        };
+        document.getElementById('colSlider').oninput = e => { state.columns = parseInt(e.target.value); document.getElementById('colVal').innerText = state.columns; };
+        
+        document.getElementById('contrastSlider').oninput = e => { state.contrast = parseFloat(e.target.value); document.getElementById('contrastVal').innerText = state.contrast + 'x'; };
+        document.getElementById('brightnessSlider').oninput = e => { state.brightness = parseInt(e.target.value); document.getElementById('brightnessVal').innerText = state.brightness; };
+        document.getElementById('saturationSlider').oninput = e => { state.saturation = parseInt(e.target.value)/100; document.getElementById('saturationVal').innerText = e.target.value + '%'; };
+        document.getElementById('glowSlider').oninput = e => { state.glow = parseInt(e.target.value); document.getElementById('glowVal').innerText = state.glow + 'px'; };
+        document.getElementById('glowStyle').onchange = e => state.glowStyle = e.target.value;
+        
+        // --- Настройки Деформации ---
+        document.getElementById('deformToggle').onchange = e => state.deformEnabled = e.target.checked;
+        document.getElementById('deformDiffType').onchange = e => state.deformDiffType = e.target.value;
+        
+        document.getElementById('deformChaosSlider').oninput = e => { state.deformChaos = parseInt(e.target.value); document.getElementById('deformChaosVal').innerText = e.target.value; };
+        document.getElementById('deformWaveSlider').oninput = e => { state.deformWave = parseInt(e.target.value); document.getElementById('deformWaveVal').innerText = e.target.value; };
+        document.getElementById('deformDiffSlider').oninput = e => { state.deformDiff = parseInt(e.target.value); document.getElementById('deformDiffVal').innerText = e.target.value; };
+        document.getElementById('deformLensSlider').oninput = e => { state.deformLens = parseInt(e.target.value); document.getElementById('deformLensVal').innerText = e.target.value; };
+        
+        document.getElementById('fpsSelect').onchange = e => { state.targetFps = parseInt(e.target.value); };
+
+        // Логика джойстика волн
+        const waveDial = document.getElementById('waveDial');
+        const waveKnob = document.getElementById('waveDialKnob');
+        let isDraggingDial = false;
+
+        const updateDial = (clientX, clientY) => {
+            const rect = waveDial.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            const angle = Math.atan2(clientY - cy, clientX - cx);
+            state.deformWaveAngle = angle;
+            
+            const r = rect.width / 2 - 5; // Радиус перемещения точки
+            waveKnob.style.transform = `translate(-50%, -50%) translate(${Math.cos(angle) * r}px, ${Math.sin(angle) * r}px)`;
+        };
+
+        const startDialDrag = (e) => { isDraggingDial = true; updateDial(e.clientX || e.touches[0].clientX, e.clientY || e.touches[0].clientY); };
+        const moveDialDrag = (e) => { if (isDraggingDial) { e.preventDefault(); updateDial(e.clientX || e.touches[0].clientX, e.clientY || e.touches[0].clientY); } };
+        const endDialDrag = () => { isDraggingDial = false; };
+
+        waveDial.addEventListener('mousedown', startDialDrag);
+        waveDial.addEventListener('touchstart', startDialDrag, {passive: true});
+        document.addEventListener('mousemove', moveDialDrag);
+        document.addEventListener('touchmove', moveDialDrag, {passive: false});
+        document.addEventListener('mouseup', endDialDrag);
+        document.addEventListener('touchend', endDialDrag);
+
+        document.getElementById('glowColorType').onchange = e => {
+            const wrap = document.getElementById('glowColorPickerWrapper');
+            if (e.target.value === 'custom') {
+                wrap.classList.remove('hidden');
+                state.glowColor = document.getElementById('glowColorPicker').value;
+            } else {
+                wrap.classList.add('hidden');
+                state.glowColor = 'auto';
+            }
+        };
+        document.getElementById('glowColorPicker').oninput = e => {
+            state.glowColor = e.target.value;
+        };
+
+        // --- Рендер Пончика и классических 3D-фигур ---
+        function drawProcedural3D(time) {
+            const w = demoCanvas.width, h = demoCanvas.height;
+            demoCtx.fillStyle = '#050508'; 
+            demoCtx.fillRect(0, 0, w, h);
+
+            const cx = w / 2, cy = h / 2;
+            const ax = time * 0.8, ay = time * 0.5;
+            
+            // Проекция 3D точек
+            const project = (x, y, z) => {
+                let y1 = y * Math.cos(ax) - z * Math.sin(ax), z1 = y * Math.sin(ax) + z * Math.cos(ax);
+                let x2 = x * Math.cos(ay) + z1 * Math.sin(ay), z2 = -x * Math.sin(ay) + z1 * Math.cos(ay);
+                const scale = 200 / (200 + z2);
+                return { px: cx + x2 * scale, py: cy + y1 * scale, z: z2, scale };
+            };
+
+            if (state.shape === 'torus') {
+                const R = 45, r = 20;
+                const points = [];
+                for (let u = 0; u < Math.PI * 2; u += 0.3) {
+                    for (let v = 0; v < Math.PI * 2; v += 0.4) {
+                        let x = (R + r * Math.cos(v)) * Math.cos(u);
+                        let y = (R + r * Math.cos(v)) * Math.sin(u);
+                        let z = r * Math.sin(v);
+                        let p = project(x,y,z);
+                        p.hue = ((u/6.28)*360 + time*50)%360;
+                        points.push(p);
+                    }
+                }
+                points.sort((a, b) => b.z - a.z);
+                for (const pt of points) {
+                    demoCtx.fillStyle = `hsl(${pt.hue}, 90%, 65%)`;
+                    demoCtx.beginPath(); demoCtx.arc(pt.px, pt.py, Math.max(1, 4 * pt.scale), 0, Math.PI * 2); demoCtx.fill();
+                }
+            } else if (state.shape === 'cube') {
+                const s = 40;
+                const vertices = [
+                    [-s,-s,-s],[ s,-s,-s],[ s, s,-s],[-s, s,-s],
+                    [-s,-s, s],[ s,-s, s],[ s, s, s],[-s, s, s]
+                ].map(v => project(...v));
+
+                const faces = [ [0,1,2,3], [5,4,7,6], [4,0,3,7], [1,5,6,2], [4,5,1,0], [3,2,6,7] ];
+                const hues = [0, 60, 120, 180, 280, 320]; // Разные цвета для граней куба
+                const projectedFaces = faces.map((f, idx) => {
+                    const pts = f.map(i => vertices[i]);
+                    return { pts, zAvg: pts.reduce((sum, p) => sum + p.z, 0) / 4, hue: hues[idx] };
+                }).sort((a,b) => b.zAvg - a.zAvg);
+
+                for (const f of projectedFaces) {
+                    demoCtx.beginPath(); demoCtx.moveTo(f.pts[0].px, f.pts[0].py);
+                    for(let j=1; j<4; j++) demoCtx.lineTo(f.pts[j].px, f.pts[j].py);
+                    demoCtx.closePath();
+                    const lightness = Math.max(30, Math.min(70, 65 - f.zAvg * 0.5));
+                    demoCtx.fillStyle = `hsl(${f.hue}, 85%, ${lightness}%)`;
+                    demoCtx.fill();
+                    demoCtx.strokeStyle = demoCtx.fillStyle; demoCtx.lineWidth = 0.5; demoCtx.stroke();
+                }
+            } else if (state.shape === 'sphere') {
+                const r = 45;
+                const latBands = 12;
+                const longBands = 16;
+                const faces = [];
+                const verts = [];
+                for (let lat=0; lat<=latBands; lat++) {
+                    const theta = lat * Math.PI / latBands;
+                    for (let lon=0; lon<=longBands; lon++) {
+                        const phi = lon * 2 * Math.PI / longBands;
+                        const x = r * Math.cos(phi) * Math.sin(theta);
+                        const y = r * Math.cos(theta);
+                        const z = r * Math.sin(phi) * Math.sin(theta);
+                        verts.push(project(x, y, z));
+                    }
+                }
+                for (let lat=0; lat<latBands; lat++) {
+                    for (let lon=0; lon<longBands; lon++) {
+                        const first = (lat * (longBands + 1)) + lon;
+                        const second = first + longBands + 1;
+                        const pts = [verts[first], verts[first+1], verts[second+1], verts[second]];
+                        const zAvg = pts.reduce((sum, p) => sum + p.z, 0) / 4;
+                        const hue = ((lon/longBands)*360 + (lat/latBands)*180 + time*100) % 360;
+                        faces.push({pts, zAvg, hue});
+                    }
+                }
+                faces.sort((a,b) => b.zAvg - a.zAvg);
+                for (const f of faces) {
+                    demoCtx.beginPath();
+                    demoCtx.moveTo(f.pts[0].px, f.pts[0].py);
+                    for(let j=1; j<4; j++) demoCtx.lineTo(f.pts[j].px, f.pts[j].py);
+                    demoCtx.closePath();
+                    const lightness = Math.max(20, Math.min(65, 55 - f.zAvg * 0.4));
+                    demoCtx.fillStyle = `hsl(${f.hue}, 90%, ${lightness}%)`;
+                    demoCtx.fill();
+                    demoCtx.strokeStyle = demoCtx.fillStyle; demoCtx.lineWidth = 0.5; demoCtx.stroke();
+                }
+            } else if (state.shape === 'cylinder') {
+                const r = 35, h2 = 45, bands = 16;
+                const faces = [];
+                const topPts = [], botPts = [];
+                for (let i=0; i<bands; i++) {
+                    const a = (i/bands)*Math.PI*2;
+                    topPts.push(project(r*Math.cos(a), h2, r*Math.sin(a)));
+                    botPts.push(project(r*Math.cos(a), -h2, r*Math.sin(a)));
+                }
+                for (let i=0; i<bands; i++) {
+                    const next = (i+1)%bands;
+                    const pts = [topPts[i], topPts[next], botPts[next], botPts[i]];
+                    const zAvg = pts.reduce((sum, p) => sum + p.z, 0) / 4;
+                    const hue = ((i/bands)*360 + time*100) % 360;
+                    faces.push({pts, zAvg, type: 'side', hue});
+                }
+                faces.push({pts: topPts, zAvg: topPts.reduce((s,p)=>s+p.z,0)/bands, type:'cap', hue: (time*100)%360, lightness: 65});
+                faces.push({pts: botPts, zAvg: botPts.reduce((s,p)=>s+p.z,0)/bands, type:'cap', hue: (time*100 + 180)%360, lightness: 35});
+
+                faces.sort((a,b) => b.zAvg - a.zAvg);
+                for (const f of faces) {
+                    demoCtx.beginPath();
+                    demoCtx.moveTo(f.pts[0].px, f.pts[0].py);
+                    for(let j=1; j<f.pts.length; j++) demoCtx.lineTo(f.pts[j].px, f.pts[j].py);
+                    demoCtx.closePath();
+                    const lightness = f.type === 'cap' ? f.lightness : Math.max(20, Math.min(65, 55 - f.zAvg * 0.4));
+                    demoCtx.fillStyle = `hsl(${f.hue}, 90%, ${lightness}%)`;
+                    demoCtx.fill();
+                    demoCtx.strokeStyle = demoCtx.fillStyle; demoCtx.lineWidth = 0.5; demoCtx.stroke();
+                }
+            } else if (state.shape === 'cone') {
+                const r = 40, h2 = 45, bands = 16;
+                const faces = [];
+                const botPts = [];
+                const tip = project(0, -h2, 0);
+                for (let i=0; i<bands; i++) {
+                    const a = (i/bands)*Math.PI*2;
+                    botPts.push(project(r*Math.cos(a), h2, r*Math.sin(a)));
+                }
+                for (let i=0; i<bands; i++) {
+                    const next = (i+1)%bands;
+                    const pts = [tip, botPts[next], botPts[i]];
+                    const zAvg = pts.reduce((sum, p) => sum + p.z, 0) / 3;
+                    const hue = ((i/bands)*360 + time*100) % 360;
+                    faces.push({pts, zAvg, isCap: false, hue});
+                }
+                faces.push({pts: botPts, zAvg: botPts.reduce((s,p)=>s+p.z,0)/bands, isCap:true, hue: (time*100)%360});
+
+                faces.sort((a,b) => b.zAvg - a.zAvg);
+                for (const f of faces) {
+                    demoCtx.beginPath();
+                    demoCtx.moveTo(f.pts[0].px, f.pts[0].py);
+                    for(let j=1; j<f.pts.length; j++) demoCtx.lineTo(f.pts[j].px, f.pts[j].py);
+                    demoCtx.closePath();
+                    const lightness = f.isCap ? 35 : Math.max(20, Math.min(65, 55 - f.zAvg * 0.4));
+                    demoCtx.fillStyle = `hsl(${f.hue}, 90%, ${lightness}%)`;
+                    demoCtx.fill();
+                    demoCtx.strokeStyle = demoCtx.fillStyle; demoCtx.lineWidth = 0.5; demoCtx.stroke();
+                }
+            }
+        }
+
+        // --- Главный цикл ASCII ---
+        const samplingCanvas = document.getElementById('samplingCanvas');
+        const samplingCtx = samplingCanvas.getContext('2d', { willReadFrequently: true });
+        const asciiOutputCanvas = document.getElementById('asciiOutputCanvas');
+        const asciiCtx = asciiOutputCanvas.getContext('2d');
+        
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16)} : {r:255,g:255,b:255};
+        }
+
+        let animationTime = 0;
+        let lastTimestamp = 0;
+        let lastFrameTime = 0;
+        let fpsCounter = 0;
+        let lastFpsUpdate = 0;
+        let currentFps = 0;
+
+        function renderLoop(time) {
+            if (!lastTimestamp) lastTimestamp = time;
+            
+            // --- Ограничитель FPS ---
+            if (state.targetFps > 0) {
+                const interval = 1000 / state.targetFps;
+                if (time - lastFrameTime < interval) {
+                    requestAnimationFrame(renderLoop);
+                    return; // Пропускаем кадр, если слишком рано
+                }
+                // Корректируем время последнего кадра для плавности
+                lastFrameTime = time - (time - lastFrameTime) % interval;
+            } else {
+                lastFrameTime = time; // Если выбрано MAX
+            }
+
+            const delta = time - lastTimestamp;
+            lastTimestamp = time;
+            
+            if (!state.paused) {
+                animationTime += delta;
+            }
+
+            // --- Подсчет и вывод текущего FPS ---
+            fpsCounter++;
+            if (time - lastFpsUpdate >= 1000) {
+                currentFps = fpsCounter;
+                fpsCounter = 0;
+                lastFpsUpdate = time;
+                
+                const fpsLabel = document.getElementById('currentFpsLabel');
+                const fpsIcon = document.getElementById('fpsIcon');
+                
+                if (fpsLabel) fpsLabel.innerText = currentFps + ' FPS';
+                
+                if (fpsIcon) {
+                    if (currentFps >= (state.targetFps > 0 ? state.targetFps - 5 : 55)) {
+                        fpsIcon.className = "w-3 h-3 text-green-400"; // Всё ок
+                    } else if (currentFps >= 20) {
+                        fpsIcon.className = "w-3 h-3 text-yellow-400"; // Нагрузка
+                    } else {
+                        fpsIcon.className = "w-3 h-3 text-red-500"; // Тормоза
+                    }
+                }
+            }
+
+            // Рисуем выбранную фигуру если выбран Демо-режим
+            if (state.source === 'demo') drawProcedural3D(animationTime / 1000);
+            
+            const srcEl = state.source === 'demo' ? demoCanvas : (state.source === 'photo' ? photoElement : videoElement);
+            let srcW = srcEl.videoWidth || srcEl.naturalWidth || srcEl.width || 320;
+            let srcH = srcEl.videoHeight || srcEl.naturalHeight || srcEl.height || 180;
+
+            if (srcW > 0 && srcH > 0) {
+                let displayAspect = srcW / srcH;
+                let cropX = 0, cropY = 0, cropW = srcW, cropH = srcH;
+
+                // Умная обрезка (Кроп) под нужный формат
+                if(state.aspect !== 'auto') {
+                    let targetAspect = 16/9;
+                    if(state.aspect === '4:3') targetAspect = 4/3;
+                    else if(state.aspect === '1:1') targetAspect = 1;
+                    else if(state.aspect === '9:16') targetAspect = 9/16;
+                    
+                    if (srcW / srcH > targetAspect) {
+                        cropW = srcH * targetAspect;
+                        cropX = (srcW - cropW) / 2;
+                    } else {
+                        cropH = srcW / targetAspect;
+                        cropY = (srcH - cropH) / 2;
+                    }
+                    displayAspect = targetAspect;
+                }
+
+                const cols = state.columns;
+                const rows = Math.max(8, Math.floor((cols / displayAspect) * state.fontAspect));
+                
+                if (samplingCanvas.width !== cols || samplingCanvas.height !== rows) {
+                    samplingCanvas.width = cols; samplingCanvas.height = rows;
+                }
+
+                samplingCtx.save();
+                if (state.mirror) {
+                    samplingCtx.translate(cols, 0);
+                    samplingCtx.scale(-1, 1);
+                }
+                samplingCtx.drawImage(srcEl, cropX, cropY, cropW, cropH, 0, 0, cols, rows);
+                samplingCtx.restore();
+                
+                const imgData = samplingCtx.getImageData(0, 0, cols, rows).data;
+                
+                const outW = Math.ceil(cols * (state.fontSize * 0.6));
+                const outH = Math.ceil(rows * state.fontSize);
+
+                if (asciiOutputCanvas.width !== outW || asciiOutputCanvas.height !== outH) {
+                    asciiOutputCanvas.width = outW; asciiOutputCanvas.height = outH;
+                    updateExportUI(); 
+                }
+
+                // Установка фона: Если светлая тема и нажат тумблер - фон белый. Иначе черный.
+                const bgStyle = (state.lightTheme && state.canvasBgWhite) ? '#ffffff' : '#050508';
+                document.getElementById('asciiViewport').style.backgroundColor = bgStyle;
+                
+                // Чтобы Glow эффект работал только на буквы, используем прозрачный Canvas, а фон рисуем на родителе.
+                asciiCtx.clearRect(0, 0, outW, outH);
+
+                asciiCtx.font = `bold ${state.fontSize}px "JetBrains Mono", monospace`;
+                asciiCtx.textBaseline = 'top';
+
+                let textOut = '';
+                const chars = state.charset;
+
+                for (let y = 0; y < rows; y++) {
+                    let rowStr = '';
+                    for (let x = 0; x < cols; x++) {
+                        const i = (y * cols + x) * 4;
+                        let r = imgData[i], g = imgData[i+1], b = imgData[i+2];
+                        
+                        r = Math.min(255, Math.max(0, (r - 128) * state.contrast + 128 + state.brightness));
+                        g = Math.min(255, Math.max(0, (g - 128) * state.contrast + 128 + state.brightness));
+                        b = Math.min(255, Math.max(0, (b - 128) * state.contrast + 128 + state.brightness));
+                        
+                        const avg = (r + g + b) / 3;
+                        r = avg + (r - avg) * state.saturation; 
+                        g = avg + (g - avg) * state.saturation; 
+                        b = avg + (b - avg) * state.saturation;
+                        
+                        const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+                        const char = chars[Math.min(chars.length - 1, Math.floor(lum * chars.length))] || ' ';
+                        rowStr += char;
+
+                        if (char !== ' ') {
+                            // --- Расчет искажений (Деформация) ---
+                            let dx = 0;
+                            let dy = 0;
+
+                            if (state.deformEnabled) {
+                                if (state.deformChaos > 0) {
+                                    dx += (Math.random() - 0.5) * state.deformChaos;
+                                    dy += (Math.random() - 0.5) * state.deformChaos;
+                                }
+                                if (state.deformWave > 0) {
+                                    // Расчет фазы волны с учетом выбранного угла
+                                    const phase = (x * Math.cos(state.deformWaveAngle) + y * Math.sin(state.deformWaveAngle)) / 4 - animationTime / 300;
+                                    const disp = Math.sin(phase) * state.deformWave;
+                                    dx += Math.cos(state.deformWaveAngle) * disp;
+                                    dy += Math.sin(state.deformWaveAngle) * disp;
+                                }
+                                if (state.deformDiff > 0) {
+                                    if (state.deformDiffType === 'melt') {
+                                        const timeOffset = animationTime / 1000;
+                                        const nx = (Math.sin((x + timeOffset) * 12.9898 + y * 78.233) * 43758.5453) % 1;
+                                        const ny = (Math.sin(x * 39.346 + (y + timeOffset) * 11.135) * 43758.5453) % 1;
+                                        dx += (nx - 0.5) * state.deformDiff * 1.5;
+                                        dy += (ny - 0.5) * state.deformDiff * 1.5;
+                                    } else if (state.deformDiffType === 'glitch') {
+                                        const blockY = Math.floor(y / 4);
+                                        const isGlitchLine = (Math.sin(blockY * 15 + animationTime / 150) > 0.85);
+                                        if (isGlitchLine) dx += (Math.random() - 0.5) * state.deformDiff * 2.5;
+                                    } else if (state.deformDiffType === 'static') {
+                                        dx += (Math.random() - 0.5) * state.deformDiff;
+                                    }
+                                }
+                                if (state.deformLens !== 0) {
+                                    const cx = cols / 2;
+                                    const cy = rows / 2;
+                                    const dist = Math.sqrt((x - cx)**2 + (y - cy)**2);
+                                    const force = state.deformLens * (1 - Math.min(1, dist / Math.max(cx, cy)));
+                                    if (dist > 0) {
+                                        dx += ((x - cx) / dist) * force;
+                                        dy += ((y - cy) / dist) * force;
+                                    }
+                                }
+                            }
+
+                            if (state.colorMode === 'rgb') {
+                                asciiCtx.fillStyle = `rgb(${r|0},${g|0},${b|0})`;
+                            } else if (state.colorMode === 'gradient') {
+                                const t = x / cols;
+                                const stops = [...state.gradients[state.activeGrad]].sort((a,b) => a.p - b.p);
+                                let c1, c2, ratio;
+                                let idx = 0;
+                                while (idx < stops.length - 1 && t > stops[idx+1].p) idx++;
+                                if (idx >= stops.length - 1) idx = Math.max(0, stops.length - 2);
+                                
+                                if (stops.length === 1) {
+                                    c1 = hexToRgb(stops[0].c); c2 = c1; ratio = 0;
+                                } else {
+                                    const s1 = stops[idx], s2 = stops[idx+1];
+                                    const range = s2.p - s1.p;
+                                    ratio = range === 0 ? 0 : (t - s1.p) / range;
+                                    ratio = Math.max(0, Math.min(1, ratio));
+                                    c1 = hexToRgb(s1.c); c2 = hexToRgb(s2.c);
+                                }
+                                asciiCtx.fillStyle = `rgb(${c1.r + (c2.r - c1.r) * ratio | 0},${c1.g + (c2.g - c1.g) * ratio | 0},${c1.b + (c2.b - c1.b) * ratio | 0})`;
+                            } else {
+                                if (state.colorMode === 'mono-white') {
+                                    asciiCtx.fillStyle = state.canvasBgWhite ? '#334155' : '#ffffff';
+                                } else if (state.colorMode === 'mono-invert') {
+                                    asciiCtx.fillStyle = state.canvasBgWhite ? '#ffffff' : '#111111';
+                                } else if (state.colorMode === 'cyber-blue') {
+                                    asciiCtx.fillStyle = '#3b82f6';
+                                } else {
+                                    asciiCtx.fillStyle = '#00ff66'; // Matrix
+                                }
+                            }
+
+                            // Кастомные стили свечения (Glow FX) применяются перед отрисовкой буквы
+                            if (state.glow > 0) {
+                                let blur = state.glow;
+                                asciiCtx.shadowOffsetX = 0;
+                                asciiCtx.shadowOffsetY = 0;
+
+                                if (state.glowStyle === 'blink') {
+                                    blur = (Math.sin(time / 150) > 0) ? state.glow * 1.5 : 0;
+                                } else if (state.glowStyle === 'sparkle') {
+                                    if (Math.random() > 0.93) blur *= 2.5;
+                                } else if (state.glowStyle === 'strong') {
+                                    blur *= 3;
+                                } else if (state.glowStyle === 'volume') {
+                                    asciiCtx.shadowOffsetX = state.glow * 0.4;
+                                    asciiCtx.shadowOffsetY = state.glow * 0.4;
+                                    blur *= 1.2;
+                                }
+                                
+                                asciiCtx.shadowBlur = blur;
+                                asciiCtx.shadowColor = state.glowColor === 'auto' ? asciiCtx.fillStyle : state.glowColor;
+                            } else {
+                                asciiCtx.shadowBlur = 0;
+                                asciiCtx.shadowOffsetX = 0;
+                                asciiCtx.shadowOffsetY = 0;
+                            }
+
+                            // Применяем смещение dx и dy при отрисовке символа
+                            asciiCtx.fillText(char, x * (state.fontSize * 0.6) + dx, y * state.fontSize + dy);
+                        }
+                    }
+                    textOut += rowStr + '\n';
+                }
+                state.lastAsciiText = textOut;
+            }
+            requestAnimationFrame(renderLoop);
+        }
+
+        function updateExportUI() {
+            const w = asciiOutputCanvas.width, h = asciiOutputCanvas.height;
+            const s = parseInt(document.getElementById('exportScaleSelect').value);
+            document.getElementById('exportPxLabel').innerText = `${w * s}x${h * s} px`;
+            document.getElementById('exportMbLabel').innerText = `~${((w * s * h * s * 4) / (1024 * 1024)).toFixed(1)} MB`;
+        }
+        document.getElementById('exportScaleSelect').onchange = updateExportUI;
+
+        // Реализация кнопок Скачать и Копировать текст
+        document.getElementById('downloadBtn').onclick = () => {
+            const fmt = document.getElementById('exportFormatSelect').value;
+            const link = document.createElement('a');
+            link.download = `ascii_export_${Date.now()}.${fmt}`;
+            // Рисуем итоговое изображение с фоном
+            const exportCanvas = document.createElement('canvas');
+            exportCanvas.width = asciiOutputCanvas.width;
+            exportCanvas.height = asciiOutputCanvas.height;
+            const ctx = exportCanvas.getContext('2d');
+            ctx.fillStyle = (state.lightTheme && state.canvasBgWhite) ? '#ffffff' : '#050508';
+            ctx.fillRect(0,0,exportCanvas.width, exportCanvas.height);
+            ctx.drawImage(asciiOutputCanvas, 0, 0);
+            
+            link.href = exportCanvas.toDataURL(`image/${fmt}`, 1.0);
+            link.click();
+        };
+
+        document.getElementById('copyTxtBtn').onclick = () => {
+            navigator.clipboard.writeText(state.lastAsciiText).then(() => {
+                const toast = document.getElementById('toastMessage');
+                toast.style.opacity = 1;
+                setTimeout(() => toast.style.opacity = 0, 2000);
+            });
+        };
+
+        requestAnimationFrame(renderLoop);
+    </script>
+</body>
+</html>

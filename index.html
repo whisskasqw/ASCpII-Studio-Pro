@@ -75,6 +75,12 @@
         .editor-transition { transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); max-height: 0; opacity: 0; overflow: hidden; padding-top: 0; margin-top: 0; border-top-width: 0; }
         .editor-transition.open { max-height: 300px; opacity: 1; padding-top: 0.75rem; margin-top: 0.75rem; border-top-width: 1px; }
         
+        /* Кастомный скроллбар для списка символов */
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #272932; border-radius: 4px; }
+        html:not(.dark) .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; }
+
         /* Эффект для полноэкранного режима */
         :fullscreen #asciiViewport { border-radius: 0; }
         :-webkit-full-screen #asciiViewport { border-radius: 0; }
@@ -336,7 +342,47 @@
                 </div>
             </div>
 
-            <!-- ПАНЕЛЬ 4: Деформация -->
+            <!-- ПАНЕЛЬ 4: Символы (Новая) -->
+            <div id="panelCharset" class="bg-[#16171c] rounded-2xl border border-[#272932] p-4 shadow-xl panel-transition origin-top">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2">
+                        <button class="w-3 h-3 rounded-full bg-[#ff5f56] hover:bg-[#ff5f56]/80 transition close-panel-btn" data-target="panelCharset"></button>
+                        <button class="w-3 h-3 rounded-full bg-[#ffbd2e] hover:bg-[#ffbd2e]/80 transition min-panel-btn" data-target="panelCharsetContent"></button>
+                        <button class="w-3 h-3 rounded-full bg-[#27c93f] hover:bg-[#27c93f]/80 transition expand-panel-btn" data-target="panelCharsetContent" title="Развернуть"></button>
+                    </div>
+                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Символы и Текст</span>
+                </div>
+
+                <div id="panelCharsetContent" class="space-y-4 panel-transition origin-top">
+                    <!-- Кастомный ввод -->
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-[11px]">
+                            <span class="text-slate-400">Набор символов (от темного к светлому)</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <input type="text" id="charsetInput" value=" .:-=+*#%@" class="flex-1 bg-[#0e0f13] border border-[#272932] rounded-lg px-2.5 py-1.5 text-xs text-white font-mono outline-none focus:border-blue-500 transition shadow-inner">
+                            <button id="saveCharsetBtn" class="px-3 py-1.5 rounded-lg bg-[#272932] hover:bg-slate-600 keep-white-text text-xs transition shadow-sm" title="Сохранить свой пресет">
+                                <i data-lucide="save" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Сетка пресетов (скрыта по умолчанию) -->
+                    <div class="space-y-2 mt-3 pt-3 border-t border-[#272932]">
+                        <button id="toggleLibraryBtn" class="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-[#272932] transition group cursor-pointer border border-transparent hover:border-slate-600">
+                            <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider group-hover:text-white transition">Библиотека пресетов</span>
+                            <i data-lucide="chevron-down" id="libraryChevron" class="w-4 h-4 text-slate-500 transition-transform duration-300"></i>
+                        </button>
+                        <div id="libraryContainer" class="editor-transition">
+                            <div id="charsetPresetsGrid" class="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar pb-2">
+                                <!-- Кнопки генерируются через JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ПАНЕЛЬ 5: Деформация -->
             <div id="panelDeform" class="bg-[#16171c] rounded-2xl border border-[#272932] p-4 shadow-xl panel-transition origin-top">
                 <div class="flex items-center justify-between mb-4">
                     <div class="flex items-center gap-2">
@@ -608,6 +654,7 @@
             'panelSource': 'monitor-play',
             'panelColor': 'palette',
             'panelDetails': 'sliders-horizontal',
+            'panelCharset': 'type',
             'panelDeform': 'zap'
         };
 
@@ -1078,6 +1125,131 @@
         document.getElementById('deformLensSlider').oninput = e => { state.deformLens = parseInt(e.target.value); document.getElementById('deformLensVal').innerText = e.target.value; };
         
         document.getElementById('fpsSelect').onchange = e => { state.targetFps = parseInt(e.target.value); };
+
+        // --- Наборы символов (Charsets) ---
+        const defaultCharsets = [
+            { name: 'Стандарт', chars: ' .:-=+*#%@' },
+            { name: 'Детализированный', chars: ' .\'`^",:;Il!i><~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$' },
+            { name: 'Тонкий градиент', chars: ' .xoO0@' },
+            { name: 'Алфавит (А-Я)', chars: ' АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ' },
+            { name: 'Цифры (0-9)', chars: ' .1234567890' },
+            { name: 'Хекс (Hex)', chars: ' .0123456789ABCDEF' },
+            { name: 'Бинарный', chars: ' 01' },
+            { name: 'Минимализм', chars: ' -+*#' },
+            { name: 'Блоки (Плавные)', chars: ' ░▒▓█' },
+            { name: 'Блоки (Резкие)', chars: ' ▖▘▝▗▚▞█' },
+            { name: 'Бары (Вертикаль)', chars: ' ▏▎▍▌▋▊▉█' },
+            { name: 'Уровни (Горизонталь)', chars: '  ▂▃▄▅▆▇█' },
+            { name: 'Китайский (Светлый)', chars: ' 丶一二三四五六七八九十百千万龘' },
+            { name: 'Китайский (Плотный)', chars: ' 囗囚囙囜囝囡团敦龘' },
+            { name: 'Японский (Кана)', chars: ' ぁあぃいぅうぇえぉおかがきぎ' },
+            { name: 'Японский (Кандзи)', chars: ' 日月火水木金土' },
+            { name: 'Матрица', chars: ' 01ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ' },
+            { name: 'Точки (Брайль)', chars: ' ⠁⠂⠃⠄⠅⠆⠇⡀⡄⡆⡇⢀⢄⢆⢇⣄⣆⣇⣿' },
+            { name: 'Линии (Рамки)', chars: ' ─│┌┐└┘├┤┬┴┼' },
+            { name: 'Круги и пузыри', chars: ' ◦◌◍◎●⬤' },
+            { name: 'Квадраты', chars: ' ▫◽◻⬜⬛' },
+            { name: 'Треугольники', chars: ' ▿▵▽△▼▲' },
+            { name: 'Звезды', chars: ' ⋆✧✦✯★' },
+            { name: 'Музыка', chars: ' ♩♪♫♬♭♮♯' },
+            { name: 'Шахматы', chars: ' ♙♟♘♞♗♝♖♜♕♛♔♚' },
+            { name: 'Масти карт', chars: ' ♤♧♡♢♠♣♥♦' },
+            { name: 'Математика', chars: ' +-×÷=≠≈∞' },
+            { name: 'Стрелки', chars: ' ←↑→↓↔↕↖↗↘↙' },
+            { name: 'Валюты', chars: ' ¢£¥€$₽' },
+            { name: 'Руны', chars: ' ᚠᚢᚦᚨᚱᚲᚷᚹ' },
+            { name: 'Снежинки', chars: ' ❅❆❇❈❉❊' },
+            { name: 'Волны', chars: ' 〰~≈∽∿' }
+        ];
+
+        let savedCharsets = JSON.parse(localStorage.getItem('ascii_custom_charsets') || '[]');
+        
+        function renderCharsets() {
+            const grid = document.getElementById('charsetPresetsGrid');
+            if(!grid) return;
+            grid.innerHTML = '';
+            
+            const allSets = [...defaultCharsets, ...savedCharsets];
+            
+            allSets.forEach((set, idx) => {
+                const btn = document.createElement('button');
+                const isCustom = idx >= defaultCharsets.length;
+                const isActive = state.charset === set.chars;
+                
+                btn.className = `flex flex-col items-start p-2 rounded-lg border transition text-left group relative ${
+                    isActive 
+                    ? 'border-blue-500 bg-blue-500/10 shadow-[0_0_8px_rgba(59,130,246,0.3)]' 
+                    : 'border-[#272932] bg-[#0e0f13] hover:border-slate-500'
+                }`;
+                
+                btn.innerHTML = `
+                    <span class="text-[10px] font-medium ${isActive ? 'text-blue-400' : 'text-slate-400'} mb-1 truncate w-full pr-4">${set.name}</span>
+                    <span class="text-[11px] font-mono ${isActive ? 'text-white' : 'text-slate-300'} truncate w-full tracking-widest">${set.chars}</span>
+                `;
+                
+                // Кнопка удаления для пользовательских пресетов
+                if (isCustom) {
+                    const delBtn = document.createElement('div');
+                    delBtn.className = 'absolute top-1.5 right-1.5 text-slate-500 hover:text-[#ff5f56] opacity-0 group-hover:opacity-100 transition p-1 bg-[#16171c] rounded-md border border-[#272932]';
+                    delBtn.innerHTML = '<i data-lucide="trash-2" class="w-3 h-3"></i>';
+                    delBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        savedCharsets.splice(idx - defaultCharsets.length, 1);
+                        localStorage.setItem('ascii_custom_charsets', JSON.stringify(savedCharsets));
+                        renderCharsets();
+                    };
+                    btn.appendChild(delBtn);
+                }
+                
+                btn.onclick = () => {
+                    state.charset = set.chars;
+                    document.getElementById('charsetInput').value = set.chars;
+                    renderCharsets();
+                };
+                
+                grid.appendChild(btn);
+            });
+            lucide.createIcons();
+        }
+
+        // Логика открытия/скрытия библиотеки пресетов
+        document.getElementById('toggleLibraryBtn').onclick = () => {
+            const container = document.getElementById('libraryContainer');
+            const chevron = document.getElementById('libraryChevron');
+            container.classList.toggle('open');
+            if (container.classList.contains('open')) {
+                chevron.style.transform = 'rotate(180deg)';
+            } else {
+                chevron.style.transform = 'rotate(0deg)';
+            }
+        };
+
+        document.getElementById('charsetInput').oninput = (e) => {
+            state.charset = e.target.value || ' ';
+            renderCharsets(); // Обновляем выделение кнопок
+        };
+
+        document.getElementById('saveCharsetBtn').onclick = () => {
+            const chars = document.getElementById('charsetInput').value;
+            if (chars.length < 2) return;
+            
+            const isDefault = defaultCharsets.some(s => s.chars === chars);
+            const isSaved = savedCharsets.some(s => s.chars === chars);
+            
+            if (!isDefault && !isSaved) {
+                savedCharsets.push({ name: 'Мой пресет ' + (savedCharsets.length + 1), chars });
+                localStorage.setItem('ascii_custom_charsets', JSON.stringify(savedCharsets));
+                renderCharsets();
+                
+                // Анимация тоста (сообщения)
+                const toast = document.getElementById('toastMessage');
+                toast.innerText = 'Набор символов сохранен!';
+                toast.style.opacity = 1;
+                setTimeout(() => { toast.style.opacity = 0; setTimeout(() => toast.innerText = 'Готово!', 300); }, 2500);
+            }
+        };
+        
+        renderCharsets(); // Инициализация наборов при загрузке
 
         // Логика джойстика волн
         const waveDial = document.getElementById('waveDial');

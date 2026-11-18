@@ -30,6 +30,7 @@
         <h1>Vinum Fortis</h1>
         <p class="tagline">Калькулятор крепления вина: сколько спирта и сахара добавить и каким выйдет вино</p>
       </div>
+      <label class="lang-pick"><span class="sr-only">Язык</span><select id="langSelect" aria-label="Язык"></select></label>
       <button class="theme-toggle" id="themeToggle" type="button" aria-label="Переключить тему">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
       </button>
@@ -235,21 +236,23 @@
           <span class="numeral">V</span>
           <div>
             <h2 id="h-cost">Розлив и себестоимость</h2>
-            <p class="step-sub">Цены в рублях, укажите свои. Пустое поле считается нулём.</p>
+            <p class="step-sub">Цены указывайте в выбранной валюте. Пустое поле считается нулём.</p>
           </div>
         </header>
         <div class="grid">
-          <label class="field"><span class="field-label">Вино <em>₽/л</em></span><input type="number" id="priceWine" step="1" min="0"></label>
-          <label class="field"><span class="field-label">Спирт <em>₽/л</em></span><input type="number" id="priceSpirit" step="1" min="0"></label>
-          <label class="field"><span class="field-label">Сахар <em>₽/кг</em></span><input type="number" id="priceSugar" step="1" min="0"></label>
-          <label class="field"><span class="field-label">Концентрат <em>₽/л</em></span><input type="number" id="priceRcs" step="1" min="0"></label>
+          <label class="field span2"><span class="field-label">Валюта</span><select id="currency"></select></label>
+          <label class="field"><span class="field-label">Вино <em><span class="cur-sym">₽</span>/л</em></span><input type="number" id="priceWine" step="1" min="0"></label>
+          <label class="field"><span class="field-label">Спирт <em><span class="cur-sym">₽</span>/л</em></span><input type="number" id="priceSpirit" step="1" min="0"></label>
+          <label class="field"><span class="field-label">Сахар <em><span class="cur-sym">₽</span>/кг</em></span><input type="number" id="priceSugar" step="1" min="0"></label>
+          <label class="field"><span class="field-label">Концентрат <em><span class="cur-sym">₽</span>/л</em></span><input type="number" id="priceRcs" step="1" min="0"></label>
           <label class="field"><span class="field-label">Бутылка</span>
             <select id="bottleSize">
               <option value="0.375">0,375 л</option><option value="0.5">0,5 л</option><option value="0.7">0,7 л</option>
               <option value="0.75">0,75 л</option><option value="1">1 л</option><option value="1.5">1,5 л (магнум)</option>
             </select></label>
-          <label class="field"><span class="field-label">Бутылка + пробка <em>₽</em></span><input type="number" id="priceBottle" step="1" min="0"></label>
+          <label class="field"><span class="field-label">Бутылка + пробка <em class="cur-sym">₽</em></span><input type="number" id="priceBottle" step="1" min="0"></label>
         </div>
+        <p class="hint" id="rateNote"></p>
         <div class="recipe" id="costOut"></div>
         <div class="cost-bar" id="costBar"></div>
       </section>
@@ -406,7 +409,8 @@
         <label class="btn-ghost file-btn">Импорт JSON<input type="file" id="jImport" accept="application/json,.json"></label>
         <button class="btn-ghost danger" type="button" id="jClear">Очистить журнал</button>
       </div>
-      <p class="hint" id="jMsg" aria-live="polite">Журнал хранится только в этом браузере. Чтобы перенести его, сделайте экспорт.</p>
+      <p class="hint">Журнал хранится только в этом браузере. Чтобы перенести его, сделайте экспорт.</p>
+      <p class="hint" id="jMsg" aria-live="polite"></p>
     </div>
     <div class="journal-list" id="jList"></div>
   </section>
@@ -415,6 +419,19 @@
     Vinum Fortis · расчёт по уравнениям баланса спирта и сахара с поправкой на контракцию. Прогноз pH и плотности приближённый.
   </footer>
 
+  <script src="i18n.js"></script>
+  <script src="i18n/keys.js"></script>
+  <script src="i18n/names-latin.js"></script>
+  <script src="i18n/names-uk.js"></script>
+  <script src="i18n/names-ka.js"></script>
+  <script src="i18n/uk.js"></script>
+  <script src="i18n/en.js"></script>
+  <script src="i18n/fr.js"></script>
+  <script src="i18n/es.js"></script>
+  <script src="i18n/it.js"></script>
+  <script src="i18n/de.js"></script>
+  <script src="i18n/pt.js"></script>
+  <script src="i18n/ka.js"></script>
   <script src="data.js"></script>
   <script src="calc.js"></script>
   <script src="app.js"></script>

@@ -69,7 +69,7 @@ window.WINE_DATA = {
       notes: 'Классика Массандры: спиртование бродящей мезги или сусла ректификатом, тепловая и солнечная выдержка.', aging: 'от 2 лет; марочные от 3' },
 
     { id: 'sherry_fino', group: 'Херес', name: 'Херес Fino', abv: [15, 15.5], sugar: [0, 5], ta: [3.5, 5.5], pH: [3.2, 3.6], method: 'post', spirit: 'wine_spirit', tint: '#efe0a2', tintWeight: 0.2, colors: ['white'],
-      notes: 'Креплят сухое вино из Паломино до 15–15.5 % (выше флор гибнет). Биологическая выдержка под плёнкой флора в солере.', aging: 'от 2 лет под флором (солера)' },
+      notes: 'Крепят сухое вино из Паломино до 15–15.5 % (выше флор гибнет). Биологическая выдержка под плёнкой флора в солере.', aging: 'от 2 лет под флором (солера)' },
     { id: 'sherry_manzanilla', group: 'Херес', name: 'Херес Manzanilla', abv: [15, 15.5], sugar: [0, 5], ta: [3.5, 5.5], pH: [3.2, 3.6], method: 'post', spirit: 'wine_spirit', tint: '#f1e5b0', tintWeight: 0.25, colors: ['white'],
       notes: 'Как Fino, но выдержка в Санлукаре: более толстый флор, солёная свежесть.', aging: 'от 2 лет под флором' },
     { id: 'sherry_amontillado', group: 'Херес', name: 'Херес Amontillado', abv: [16, 17.5], sugar: [0, 5], ta: [3.5, 5.5], pH: [3.3, 3.7], method: 'post', spirit: 'wine_spirit', tint: '#b97a2a', tintWeight: 0.55, colors: ['white'],

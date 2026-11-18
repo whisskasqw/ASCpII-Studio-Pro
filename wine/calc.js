@@ -16,6 +16,11 @@
   const SUCROSE_L_PER_G = 0.00063;   // удельный объём сахарозы в растворе, л/г
   const SUGAR_PER_ABV = 16.83;       // г/л сахара на 1 % об. спирта при брожении
 
+  /* Перевод сообщений: по умолчанию русский шаблон с подстановкой {name}. */
+  let T = (tpl, p) => p ? tpl.replace(/\{(\w+)\}/g, (m, k) => (k in p ? String(p[k]).replace('.', ',') : m)) : tpl;
+  const setTranslator = fn => { T = fn; };
+  const r0 = v => Math.round(v), r1 = v => Math.round(v * 10) / 10, r2 = v => Math.round(v * 100) / 100;
+
   function interp(table, x) {
     if (x <= table[0][0]) return table[0][1];
     for (let i = 1; i < table.length; i++) {
@@ -93,14 +98,14 @@
       return {
         ok: false,
         errors: [sugarSource === 'rcs'
-          ? `С этим спиртом и концентратом сусла цель ${A} % и ${St} г/л недостижима: концентрат разбавляет спирт, а спирт разбавляет сахар. Возьмите спирт крепче или подслащивайте сахарозой.`
-          : `Цель ${A} % и ${St} г/л недостижима с этим спиртом. Возьмите спирт крепче или снизьте цель.`]
+          ? T('С этим спиртом и концентратом сусла цель {a} % и {s} г/л недостижима: концентрат разбавляет спирт, а спирт разбавляет сахар. Возьмите спирт крепче или подслащивайте сахарозой.', { a: A, s: St })
+          : T('Цель {a} % и {s} г/л недостижима с этим спиртом. Возьмите спирт крепче или снизьте цель.', { a: A, s: St })]
       };
     }
     const warnings = [];
-    if (A <= aw) warnings.push('Крепость вина уже не ниже целевой: спирт не нужен.');
-    if (res.sugar - St > 2) warnings.push(`Сахар после крепления ${res.sugar.toFixed(0)} г/л выше целевого: подсластка не нужна, снизить сахар можно только купажом с более сухим вином.`);
-    if (Vs / Vw > 0.45) warnings.push('Спирта требуется много относительно объёма вина: возьмите более крепкий спирт, иначе вино сильно разбавится по вкусу и кислотности.');
+    if (A <= aw) warnings.push(T('Крепость вина уже не ниже целевой: спирт не нужен.'));
+    if (res.sugar - St > 2) warnings.push(T('Сахар после крепления {s} г/л выше целевого: подсластка не нужна, снизить сахар можно только купажом с более сухим вином.', { s: r0(res.sugar) }));
+    if (Vs / Vw > 0.45) warnings.push(T('Спирта требуется много относительно объёма вина: возьмите более крепкий спирт, иначе вино сильно разбавится по вкусу и кислотности.'));
     return {
       ok: true, warnings,
       spiritL: Vs,
@@ -114,13 +119,13 @@
   function validate({ Vw, aw, Sw, as, targetAbv: A, targetSugar: St }) {
     const e = [];
     const num = v => typeof v === 'number' && isFinite(v);
-    if (!num(Vw) || Vw <= 0) e.push('Объём вина должен быть больше нуля.');
-    if (!num(aw) || aw < 0 || aw >= 25) e.push('Крепость вина должна быть от 0 до 25 % об.');
-    if (!num(Sw) || Sw < 0 || Sw > 700) e.push('Сахар вина должен быть от 0 до 700 г/л.');
-    if (!num(as) || as <= 0 || as > 100) e.push('Крепость спирта должна быть от 0 до 100 % об.');
-    if (!num(A) || A <= 0) e.push('Укажите целевую крепость.');
-    if (!num(St) || St < 0) e.push('Целевой сахар не может быть отрицательным.');
-    if (num(as) && num(A) && as <= A) e.push(`Спирт ${as} % слабее или равен цели ${A} %: такой спирт не поднимет крепость до цели.`);
+    if (!num(Vw) || Vw <= 0) e.push(T('Объём вина должен быть больше нуля.'));
+    if (!num(aw) || aw < 0 || aw >= 25) e.push(T('Крепость вина должна быть от 0 до 25 % об.'));
+    if (!num(Sw) || Sw < 0 || Sw > 700) e.push(T('Сахар вина должен быть от 0 до 700 г/л.'));
+    if (!num(as) || as <= 0 || as > 100) e.push(T('Крепость спирта должна быть от 0 до 100 % об.'));
+    if (!num(A) || A <= 0) e.push(T('Укажите целевую крепость.'));
+    if (!num(St) || St < 0) e.push(T('Целевой сахар не может быть отрицательным.'));
+    if (num(as) && num(A) && as <= A) e.push(T('Спирт {s} % слабее или равен цели {a} %: такой спирт не поднимет крепость до цели.', { s: as, a: A }));
     return e;
   }
 
@@ -159,12 +164,12 @@
   }
 
   function sweetnessClass(s) {
-    if (s < 4) return 'сухое';
-    if (s < 12) return 'полусухое';
-    if (s < 45) return 'полусладкое';
-    if (s < 120) return 'сладкое';
-    if (s < 200) return 'десертное';
-    return 'ликёрное';
+    if (s < 4) return T('сухое');
+    if (s < 12) return T('полусухое');
+    if (s < 45) return T('полусладкое');
+    if (s < 120) return T('сладкое');
+    if (s < 200) return T('десертное');
+    return T('ликёрное');
   }
 
   /* Статус попадания значения в диапазон: ok / near (±10 % ширины, мин. 0.5) / out. */
@@ -192,17 +197,19 @@
     if (!style) return r;
     if (style.ta && pred.ta < style.ta[0]) {
       const g = (style.ta[0] - pred.ta) * Vf;
-      r.push(`Кислотность ${pred.ta.toFixed(1)} г/л ниже стиля (${style.ta[0]}–${style.ta[1]}): добавьте около ${Math.ceil(g)} г винной кислоты на весь объём (+${(style.ta[0] - pred.ta).toFixed(1)} г/л), пробное подкисление на малом объёме.`);
+      r.push(T('Кислотность {ta} г/л ниже стиля ({lo}–{hi}): добавьте около {g} г винной кислоты на весь объём (+{d} г/л), пробное подкисление на малом объёме.', { ta: r1(pred.ta), lo: style.ta[0], hi: style.ta[1], g: Math.ceil(g), d: r1(style.ta[0] - pred.ta) }));
     }
-    if (style.ta && pred.ta > style.ta[1]) r.push(`Кислотность ${pred.ta.toFixed(1)} г/л выше стиля: купаж с менее кислым вином, холодная стабилизация или раскисление карбонатом кальция.`);
-    if (style.pH && pred.pH > style.pH[1]) r.push(`pH ${pred.pH.toFixed(2)} высоковат: риск микробной порчи, следите за свободным SO₂.`);
+    if (style.ta && pred.ta > style.ta[1]) r.push(T('Кислотность {ta} г/л выше стиля: купаж с менее кислым вином, холодная стабилизация или раскисление карбонатом кальция.', { ta: r1(pred.ta) }));
+    if (style.pH && pred.pH > style.pH[1]) r.push(T('pH {ph} высоковат: риск микробной порчи, следите за свободным SO₂.', { ph: r2(pred.pH) }));
     if (pred.sugar > 20 && pred.abv < 17 && pred.molSO2 < 0.5) {
       const need = freeSO2ForMolecular(0.6, pred.pH);
-      r.push(`Молекулярный SO₂ ${pred.molSO2.toFixed(2)} мг/л: для сладкого вина ниже 17 % лучше 0.5–0.8. Поднимите свободный SO₂ до ≈ ${Math.ceil(need)} мг/л (метабисульфит ≈ ${kmsGrams(need - pred.freeSO2, Vf).toFixed(1)} г на партию).`);
+      r.push(T('Молекулярный SO₂ {m} мг/л: для сладкого вина ниже 17 % лучше 0,5–0,8. Поднимите свободный SO₂ до ≈ {n} мг/л (метабисульфит ≈ {g} г на партию).', { m: r2(pred.molSO2), n: Math.ceil(need), g: r1(kmsGrams(need - pred.freeSO2, Vf)) }));
     }
-    if (pred.va > 1.2) r.push(`Летучая кислотность ${pred.va.toFixed(2)} г/л высокая: проверьте вино перед креплением.`);
+    if (pred.va > 1.2) r.push(T('Летучая кислотность {va} г/л высокая: проверьте вино перед креплением.', { va: r2(pred.va) }));
     if (pred.sugarAcid > 0 && style.sai && (pred.sugarAcid < style.sai[0] || pred.sugarAcid > style.sai[1]))
-      r.push(`Сахарно-кислотный индекс ${pred.sugarAcid.toFixed(0)} вне типичного для стиля (${style.sai[0]}–${style.sai[1]}): вкус будет ${pred.sugarAcid < style.sai[0] ? 'резче и кислее' : 'приторнее'} эталона.`);
+      r.push(pred.sugarAcid < style.sai[0]
+        ? T('Сахарно-кислотный индекс {i} ниже типичного для стиля ({lo}–{hi}): вкус будет резче и кислее эталона.', { i: r0(pred.sugarAcid), lo: style.sai[0], hi: style.sai[1] })
+        : T('Сахарно-кислотный индекс {i} выше типичного для стиля ({lo}–{hi}): вкус будет приторнее эталона.', { i: r0(pred.sugarAcid), lo: style.sai[0], hi: style.sai[1] }));
     return r;
   }
 
@@ -214,17 +221,17 @@
       const s = solve({ Vw, aw: m.abv, Sw: m.sugar, as, targetAbv, targetSugar: 0, useContraction });
       return s.ok ? { p, must: m, sol: s, diff: s.sugar - targetSugar } : null;
     };
-    const warn = r => r.must.abv > 15 ? 'К этому моменту в сусле больше 15 % спирта: большинство дрожжей останавливаются раньше, и сусло может не добродить до этой точки.' : '';
+    const warn = r => r.must.abv > 15 ? T('К этому моменту в сусле больше 15 % спирта: большинство дрожжей останавливаются раньше, и сусло может не добродить до этой точки.') : '';
     const a = f(0);
     if (!a) return null;
-    if (a.diff < 0) return { reachable: false, reason: 'Сахара в сусле не хватает: даже если внести спирт до начала брожения, сахар после крепления будет ниже цели. Снизьте целевой сахар или подсластите.', ...a };
+    if (a.diff < 0) return { reachable: false, reason: T('Сахара в сусле не хватает: даже если внести спирт до начала брожения, сахар после крепления будет ниже цели. Снизьте целевой сахар или подсластите.'), ...a };
     // дальше точки, где сусло само набирает целевую крепость, искать нечего
     const pMax = Math.min(100, targetAbv * k / sugar0 * 100);
     const z = f(pMax);
     if (z && z.diff > 0) {
       return {
         reachable: false, ...z,
-        reason: `Сахар цели недостижим: сусло само дойдёт до ${targetAbv} % при сброжённости ${pMax.toFixed(0)} %, и в нём ещё останется ≈ ${Math.round(z.must.sugar)} г/л. Поднимите целевой сахар, крепость или разбавьте сусло.`
+        reason: T('Сахар цели недостижим: сусло само дойдёт до {a} % при сброжённости {p} %, и в нём ещё останется ≈ {s} г/л. Поднимите целевой сахар, крепость или разбавьте сусло.', { a: targetAbv, p: r0(pMax), s: r0(z.must.sugar) })
       };
     }
     let lo = 0, hi = pMax;
@@ -252,14 +259,14 @@
   /* Прямой расчёт: пользователь задал свои дозы, считаем результат. */
   function forward({ Vw, aw, Sw, as, spiritL = 0, sugarG = 0, rcsL = 0, rcsConc = 860, useContraction = true }) {
     const errors = [];
-    if (!(Vw > 0)) errors.push('Объём вина должен быть больше нуля.');
-    if (!(as > 0 && as <= 100)) errors.push('Крепость спирта должна быть от 0 до 100 % об.');
-    if ([spiritL, sugarG, rcsL].some(v => !(v >= 0))) errors.push('Дозы не могут быть отрицательными.');
-    if (![aw, Sw].every(v => v >= 0)) errors.push('Заполните крепость и сахар вина.');
+    if (!(Vw > 0)) errors.push(T('Объём вина должен быть больше нуля.'));
+    if (!(as > 0 && as <= 100)) errors.push(T('Крепость спирта должна быть от 0 до 100 % об.'));
+    if ([spiritL, sugarG, rcsL].some(v => !(v >= 0))) errors.push(T('Дозы не могут быть отрицательными.'));
+    if (![aw, Sw].every(v => v >= 0)) errors.push(T('Заполните крепость и сахар вина.'));
     if (errors.length) return { ok: false, errors };
     const res = mix({ Vw, aw, Sw, Vs: spiritL, as, sugarG, rcsL, rcsConc, useContraction });
     const warnings = [];
-    if (spiritL / Vw > 0.45) warnings.push('Спирта очень много относительно объёма вина.');
+    if (spiritL / Vw > 0.45) warnings.push(T('Спирта очень много относительно объёма вина.'));
     return { ok: true, warnings, spiritL, absAlcoholL: spiritL * as / 100, sugarG, rcsL, ...res };
   }
 
@@ -348,7 +355,7 @@
   }
 
   return {
-    forward, molecularSO2, freeSO2ForMolecular, kmsGrams, ACIDS, BASES, acidAdjust, blend2, blendMix, diluteSpirit, fromSG, cost, mutageCurve,
+    setTranslator, forward, molecularSO2, freeSO2ForMolecular, kmsGrams, ACIDS, BASES, acidAdjust, blend2, blendMix, diluteSpirit, fromSG, cost, mutageCurve,
     CONTRACTION_TABLE, SUCROSE_L_PER_G, SUGAR_PER_ABV,
     contraction, mustState, mix, solve, validate, predict, baseline,
     sweetnessClass, rangeStatus, styleCheck, recommendations, optimalMutage,

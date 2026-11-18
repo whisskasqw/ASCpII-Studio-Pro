@@ -328,7 +328,8 @@
   }
 
   /* себестоимость */
-  const COST_COLORS = { wine: 'var(--garnet)', spirit: 'var(--brass)', sugar: 'var(--oak)', rcs: 'var(--olive)', bottles: 'var(--ink-soft)' };
+  // вино ведёт (акцент), остальное — ступени нейтральной шкалы
+  const COST_COLORS = { wine: 'var(--garnet)', spirit: 'var(--ink-soft)', sugar: 'var(--ink-muted)', rcs: 'color-mix(in srgb, var(--ink) 40%, transparent)', bottles: 'color-mix(in srgb, var(--ink) 22%, transparent)' };
   const COST_NAMES = { wine: 'Вино / сусло', spirit: 'Спирт', sugar: 'Сахар', rcs: 'Концентрат', bottles: 'Бутылки' };
   function renderCost(r) {
     const out = $('costOut'), bar = $('costBar');

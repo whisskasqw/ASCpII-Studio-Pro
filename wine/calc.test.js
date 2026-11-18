@@ -142,3 +142,32 @@ test('ареометр: плотность → сахар → потенциал
   assert.ok(r.sugar > 230 && r.sugar < 250);
   close(r.oechsle, 100, 1e-9);
 });
+
+test('недостижимая цель с концентратом: ошибка вместо расхождения', () => {
+  const r = C.solve({ Vw: 25.78, aw: 6.94, Sw: 241.8, as: 40, targetAbv: 29.7, targetSugar: 248.4, sugarSource: 'rcs' });
+  assert.equal(r.ok, false);
+  assert.ok(r.errors[0].includes('недостижима'));
+});
+
+test('мутаж: при очень сладком сусле объясняет, что недостижим сахар', () => {
+  const o = C.optimalMutage({ Vw: 100, sugar0: 700, as: 96.4, targetAbv: 17, targetSugar: 90 });
+  assert.equal(o.reachable, false);
+  assert.ok(o.reason.includes('Сахар цели недостижим'));
+});
+
+test('мутаж: предупреждение о крепости сусла выше 15 %', () => {
+  const o = C.optimalMutage({ Vw: 100, sugar0: 400, as: 96.4, targetAbv: 19, targetSugar: 130 });
+  assert.ok(o.reachable);
+  assert.ok(o.must.abv > 15 && o.warning.includes('15 %'));
+});
+
+test('fuzz: solve либо точно попадает в цель, либо возвращает ошибку', () => {
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 3000; i++) {
+    const inp = { Vw: 0.5 + rnd() * 100, aw: rnd() * 15, Sw: rnd() * 300, as: 40 + rnd() * 56.4, targetAbv: 10 + rnd() * 20, targetSugar: rnd() * 300, sugarSource: rnd() < 0.5 ? 'rcs' : 'sucrose', useContraction: rnd() < 0.7 };
+    const r = C.solve(inp);
+    if (!r.ok) continue;
+    assert.ok(r.spiritL < inp.Vw * 20, JSON.stringify(inp));
+    if (inp.targetAbv > inp.aw) close(r.abv, inp.targetAbv, 1e-3, JSON.stringify(inp));
+  }
+});

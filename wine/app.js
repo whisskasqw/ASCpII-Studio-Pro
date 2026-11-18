@@ -571,7 +571,7 @@
       if (!o.reachable) { out.textContent = o.reason; return; }
       state.fermented = round(o.p, 1);
       writeForm(); render();
-      out.innerHTML = `Мутаж при сброжённости <b>${nf(o.p, 1)} %</b>: сахар сусла <b>${nf(o.must.sugar, 0)} г/л</b>, плотность ≈ <b>${nf(C.mustDensity(o.must.sugar, o.must.abv), 3)}</b>. Подсластка не нужна.`;
+      out.innerHTML = `Мутаж при сброжённости <b>${nf(o.p, 1)} %</b>: сахар сусла <b>${nf(o.must.sugar, 0)} г/л</b>, плотность ≈ <b>${nf(C.mustDensity(o.must.sugar, o.must.abv), 3)}</b>. Подсластка не нужна.${o.warning ? `<br><span style="color:var(--out)">${esc(o.warning)}</span>` : ''}`;
     });
 
     $('cmpTable').addEventListener('click', e => {

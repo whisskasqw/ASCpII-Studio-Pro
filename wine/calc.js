@@ -87,6 +87,16 @@
       sugarG: sugarSource === 'sucrose' ? add : 0,
       rcsL: sugarSource === 'rcs' ? add : 0
     });
+    const missA = A > aw && Math.abs(res.abv - A) > 1e-3;
+    const missS = add > 0 && Math.abs(res.sugar - St) > 0.05;
+    if (missA || missS || Vs > Vw * 20) {
+      return {
+        ok: false,
+        errors: [sugarSource === 'rcs'
+          ? `С этим спиртом и концентратом сусла цель ${A} % и ${St} г/л недостижима: концентрат разбавляет спирт, а спирт разбавляет сахар. Возьмите спирт крепче или подслащивайте сахарозой.`
+          : `Цель ${A} % и ${St} г/л недостижима с этим спиртом. Возьмите спирт крепче или снизьте цель.`]
+      };
+    }
     const warnings = [];
     if (A <= aw) warnings.push('Крепость вина уже не ниже целевой: спирт не нужен.');
     if (res.sugar - St > 2) warnings.push(`Сахар после крепления ${res.sugar.toFixed(0)} г/л выше целевого: подсластка не нужна, снизить сахар можно только купажом с более сухим вином.`);
@@ -204,23 +214,31 @@
       const s = solve({ Vw, aw: m.abv, Sw: m.sugar, as, targetAbv, targetSugar: 0, useContraction });
       return s.ok ? { p, must: m, sol: s, diff: s.sugar - targetSugar } : null;
     };
-    let lo = 0, hi = 100;
-    const a = f(lo);
+    const warn = r => r.must.abv > 15 ? 'К этому моменту в сусле больше 15 % спирта: большинство дрожжей останавливаются раньше, и сусло может не добродить до этой точки.' : '';
+    const a = f(0);
     if (!a) return null;
-    if (a.diff < 0) return { reachable: false, reason: 'Сахара в сусле не хватает: даже без брожения после крепления сахар ниже цели.', ...a };
+    if (a.diff < 0) return { reachable: false, reason: 'Сахара в сусле не хватает: даже если внести спирт до начала брожения, сахар после крепления будет ниже цели. Снизьте целевой сахар или подсластите.', ...a };
+    // дальше точки, где сусло само набирает целевую крепость, искать нечего
+    const pMax = Math.min(100, targetAbv * k / sugar0 * 100);
+    const z = f(pMax);
+    if (z && z.diff > 0) {
+      return {
+        reachable: false, ...z,
+        reason: `Сахар цели недостижим: сусло само дойдёт до ${targetAbv} % при сброжённости ${pMax.toFixed(0)} %, и в нём ещё останется ≈ ${Math.round(z.must.sugar)} г/л. Поднимите целевой сахар, крепость или разбавьте сусло.`
+      };
+    }
+    let lo = 0, hi = pMax;
     for (let i = 0; i < 60; i++) {
-      const mid = (lo + hi) / 2;
-      const r = f(mid);
-      if (!r) { hi = mid; continue; }
-      if (r.diff > 0) lo = mid; else hi = mid;
+      const mid = (lo + hi) / 2, r = f(mid);
+      if (!r || r.diff <= 0) hi = mid; else lo = mid;
     }
     const r = f(lo);
     if (!r) return null;
-    if (r.must.abv >= targetAbv) return { reachable: false, reason: 'При таком сахаре сусло само дойдёт до целевой крепости: мутаж не нужен.', ...r };
-    return { reachable: true, ...r };
+    return { reachable: true, warning: warn(r), ...r };
   }
 
   const mustDensity = (sugar, abv) => 0.9982 - 0.00125 * abv + 0.000375 * sugar + 0.010;
+
   /* °Brix ↔ г/л сахара (с учётом плотности сусла и ~25 г/л несахаров). */
   const brixSG = b => 1 + b / (258.6 - (b / 258.2) * 227.1);
   const brixToSugar = b => Math.max(0, b * brixSG(b) * 10 - 25);

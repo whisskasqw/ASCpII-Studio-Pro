@@ -12,7 +12,7 @@ python3 -m http.server 8000
 
 ## Тесты
 ```bash
-node --test wine/
+node --test wine/calc.test.js
 ```
 
 ## Что считается

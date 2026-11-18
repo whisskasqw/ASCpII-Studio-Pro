@@ -53,7 +53,7 @@
 
   /* ——— форматирование ——— */
   const nf = (v, d = 1) => Number.isFinite(v) ? v.toLocaleString('ru-RU', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—';
-  const vol = v => v < 1 ? { v: nf(v * 1000, 0), u: 'мл' } : { v: nf(v, 2), u: 'л' };
+  const vol = v => v < 0.9995 ? { v: nf(v * 1000, 0), u: 'мл' } : { v: nf(v, 2), u: 'л' };
   const volStr = v => { const x = vol(v); return `${x.v} ${x.u}`; };
   const mass = g => g >= 1000 ? { v: nf(g / 1000, 2), u: 'кг' } : { v: nf(g, g < 10 ? 1 : 0), u: 'г' };
   const massStr = g => { const x = mass(g); return `${x.v} ${x.u}`; };
@@ -461,11 +461,24 @@
 
   /* ——— мастерская ——— */
   let toolsPrefilled = false;
+  /* значения купажа по умолчанию: компонент Б всегда по другую сторону цели от А */
+  function blendDefaults(param) {
+    const r = last;
+    const conf = {
+      sugar: { a: r.wine.sugar, t: state.targetSugar, lo: 0, hi: 250 },
+      abv: { a: r.wine.abv, t: state.targetAbv, lo: 11, hi: 22 },
+      ta: { a: r.wine.ta, t: r.style.ta ? (r.style.ta[0] + r.style.ta[1]) / 2 : r.wine.ta + 1, lo: 3.5, hi: 9 }
+    }[param];
+    let { a, t } = conf;
+    if (Math.abs(t - a) < 1e-9) t = a + (param === 'abv' ? 1 : param === 'ta' ? 0.5 : 20);
+    const b = t > a ? Math.max(conf.hi, t * 1.25) : Math.min(conf.lo, t * 0.5);
+    return [a, b, t].map(v => round(v, 1));
+  }
   function prefillTools() {
     if (toolsPrefilled || !last) return;
     toolsPrefilled = true;
     const r = last, p = r.pred || r.base, V = r.sol.ok ? r.sol.Vf : state.volume;
-    $('blA').value = round(r.wine.sugar, 1); $('blB').value = 250; $('blT').value = state.targetSugar; $('blV').value = round(state.volume, 1);
+    [blA.value, blB.value, blT.value] = blendDefaults($('blParam').value); $('blV').value = round(state.volume, 1);
     $('acNow').value = round(p.ta, 2); $('acT').value = r.style.ta ? round((r.style.ta[0] + r.style.ta[1]) / 2, 1) : round(p.ta, 1); $('acV').value = round(V, 2);
     $('soPH').value = round(p.pH, 2); $('soFree').value = Math.round(p.freeSO2); $('soV').value = round(V, 2);
     $('dlV').value = 1; $('dlA1').value = state.spiritAbv; $('dlA2').value = Math.max(1, Math.min(70, round(state.spiritAbv - 10, 0)));
@@ -474,10 +487,10 @@
   }
   function renderTools() {
     // купаж
-    const prm = $('blParam').value, unit = { sugar: 'г/л', abv: '% об.', ta: 'г/л' }[prm];
+    const prm = $('blParam').value, unit = { sugar: 'г/л.', abv: '% об.', ta: 'г/л.' }[prm];
     const b = C.blend2(num(blA), num(blB), num(blT), num0($('blV')));
     $('blOut').innerHTML = b
-      ? `<div class="kv"><div><span class="big">${volStr(b.Va)}</span><small>вина А · ${nf(b.fa * 100, 1)} %</small></div><div><span class="big">${volStr(b.Vb)}</span><small>вина Б · ${nf(b.fb * 100, 1)} %</small></div></div><p class="muted">Итог ${nf(num(blT), 1)} ${unit}. Смешение линейное, контракция для крепости не учтена (менее 0,1 %).</p>`
+      ? `<div class="kv"><div><span class="big">${volStr(b.Va)}</span><small>вина А · ${nf(b.fa * 100, 1)} %</small></div><div><span class="big">${volStr(b.Vb)}</span><small>вина Б · ${nf(b.fb * 100, 1)} %</small></div></div><p class="muted">Итог: ${nf(num(blT), 1)} ${unit} Смешение линейное, контракция для крепости не учтена (менее 0,1 %).</p>`
       : `<p class="bad">Нужное значение должно лежать между А и Б.</p>`;
     // кислотность
     const ac = C.acidAdjust(num0($('acNow')), num0($('acT')), num0($('acV')), $('acAcid').value, $('acBase').value);
@@ -609,9 +622,7 @@
     $('panel-tools').addEventListener('input', renderTools);
     $('panel-tools').addEventListener('change', renderTools);
     $('blParam').addEventListener('change', () => {
-      const r = last, p = $('blParam').value;
-      const vals = { sugar: [r.wine.sugar, 250, state.targetSugar], abv: [r.wine.abv, 20, state.targetAbv], ta: [r.wine.ta, 9, r.style.ta ? (r.style.ta[0] + r.style.ta[1]) / 2 : r.wine.ta] }[p];
-      [blA.value, blB.value, blT.value] = vals.map(v => round(v, 1));
+      [blA.value, blB.value, blT.value] = blendDefaults($('blParam').value);
       renderTools();
     });
     $('styleRef').addEventListener('click', e => {

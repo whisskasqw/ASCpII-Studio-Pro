@@ -93,3 +93,52 @@ test('°Brix ↔ сахар взаимно обратны', () => {
   close(C.sugarToBrix(C.brixToSugar(24)), 24, 1e-6);
   close(C.brixToSugar(24), 240, 10);
 });
+
+test('прямой расчёт совпадает с обратным', () => {
+  const inv = C.solve({ ...base, targetSugar: 80, useContraction: true });
+  const f = C.forward({ Vw: 10, aw: 12, Sw: 0, as: 96.4, spiritL: inv.spiritL, sugarG: inv.sugarG, useContraction: true });
+  close(f.abv, 19, 1e-5); close(f.sugar, 80, 1e-4);
+});
+
+test('молекулярный SO₂ и доза метабисульфита', () => {
+  close(C.molecularSO2(30, 3.3), 30 / (1 + 10 ** 1.49), 1e-9);
+  close(C.freeSO2ForMolecular(0.8, 3.3), 0.8 * (1 + 10 ** 1.49), 1e-9);
+  close(C.kmsGrams(20, 100), 20 * 100 / 1000 / 0.576, 1e-9);
+});
+
+test('подкисление и раскисление', () => {
+  const up = C.acidAdjust(5, 6, 100);
+  assert.equal(up.dir, 'up'); close(up.grams, 100, 1e-9);
+  const dn = C.acidAdjust(8, 7, 100, 'tartaric', 'caco3');
+  assert.equal(dn.dir, 'down'); close(dn.grams, 67, 1e-9);
+});
+
+test('купаж двух вин', () => {
+  const b = C.blend2(0, 200, 50, 100);
+  close(b.Va, 75, 1e-9); close(b.Vb, 25, 1e-9);
+  assert.equal(C.blend2(10, 20, 30, 100), null);
+});
+
+test('разведение спирта водой: с контракцией воды нужно больше наивного', () => {
+  const d = C.diluteSpirit(1, 96, 40);
+  assert.ok(d.water > d.naive);
+  close(C.mix({ Vw: d.water, aw: 0, Sw: 0, Vs: 1, as: 96 }).abv, 40, 1e-6);
+});
+
+test('себестоимость и бутылки', () => {
+  const c = C.cost({ Vw: 10, wineL: 100, spiritL: 2, spiritPrice: 500, sugarG: 1000, sugarPrice: 80, Vf: 12.2, bottle: 0.75, bottlePrice: 30 });
+  assert.equal(c.bottles, 16);
+  close(c.total, 1000 + 1000 + 80 + 480, 1e-9);
+});
+
+test('кривая мутажа: чем позже мутаж, тем меньше сахара', () => {
+  const pts = C.mutageCurve({ Vw: 10, sugar0: 240, as: 77, targetAbv: 19 });
+  assert.ok(pts.length > 10);
+  assert.ok(pts[0].sugar > pts[pts.length - 1].sugar);
+});
+
+test('ареометр: плотность → сахар → потенциальный спирт', () => {
+  const r = C.fromSG(1.100);
+  assert.ok(r.sugar > 230 && r.sugar < 250);
+  close(r.oechsle, 100, 1e-9);
+});

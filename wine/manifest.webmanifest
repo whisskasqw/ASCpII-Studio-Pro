@@ -1,0 +1,10 @@
+{
+  "name": "Vinum Fortis: калькулятор крепления вина",
+  "short_name": "Vinum Fortis",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f3e9d7",
+  "theme_color": "#5a0f1f",
+  "lang": "ru",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

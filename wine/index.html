@@ -9,6 +9,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#5a0f1f">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M9 3h14c0 9-2 14-7 14S9 12 9 3z' fill='%238c1c2c'/%3E%3Cpath d='M16 17v9M11 29h10' stroke='%23b08a3e' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
 </head>
 <body>
@@ -32,9 +34,14 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
       </button>
     </div>
+    <nav class="tabs" role="tablist" aria-label="Разделы">
+      <button role="tab" class="tab" data-tab="calc" aria-selected="true">Калькулятор</button>
+      <button role="tab" class="tab" data-tab="tools" aria-selected="false">Мастерская</button>
+      <button role="tab" class="tab" data-tab="journal" aria-selected="false">Журнал партий <span class="count" id="journalCount"></span></button>
+    </nav>
   </header>
 
-  <main class="layout">
+  <main class="layout panel" id="panel-calc" role="tabpanel">
     <div class="steps">
 
       <!-- I. Вино -->
@@ -107,6 +114,11 @@
           </div>
         </header>
 
+        <div class="segmented" role="radiogroup" aria-label="Как считать">
+          <label><input type="radio" name="calcMode" value="target" checked><span>Подобрать дозы под цель</span></label>
+          <label><input type="radio" name="calcMode" value="dose"><span>Проверить свои дозы</span></label>
+        </div>
+
         <div class="grid">
           <label class="field"><span class="field-label">Объём вина <em>л</em></span><input type="number" id="volume" step="0.1" min="0.05"></label>
           <label class="field span2"><span class="field-label">Спирт для крепления</span><select id="spiritSelect"></select></label>
@@ -119,7 +131,16 @@
         </label>
         <div class="style-card" id="styleCard"></div>
 
-        <div class="target">
+        <div class="dose-block" id="doseBlock" hidden>
+          <div class="grid">
+            <label class="field"><span class="field-label">Спирта вношу <em>л</em></span><input type="number" id="doseSpirit" step="0.01" min="0"></label>
+            <label class="field" id="doseSugarField"><span class="field-label">Сахара вношу <em>г</em></span><input type="number" id="doseSugar" step="10" min="0"></label>
+            <label class="field" id="doseRcsField"><span class="field-label">Концентрата вношу <em>л</em></span><input type="number" id="doseRcs" step="0.01" min="0"></label>
+          </div>
+          <p class="hint">Соответствие проверяется по диапазонам выбранного стиля.</p>
+        </div>
+
+        <div class="target" id="targetBlock">
           <label class="field">
             <span class="field-label">Целевая крепость <em>% об.</em></span>
             <div class="slider-pair">
@@ -148,6 +169,10 @@
         <div class="mutage" id="mutageBox" hidden>
           <button class="btn" id="findMutage" type="button">Найти момент мутажа</button>
           <p class="hint" id="mutageOut">Подберёт сброжённость, при которой после спирта получится целевой сахар без подсластки.</p>
+          <figure class="chart-fig">
+            <figcaption>Если внести спирт на этой сброжённости: сахар готового вина и нужная доза спирта</figcaption>
+            <svg id="mutageChart" class="chart" viewBox="0 0 640 250" role="img" aria-label="График мутажа"></svg>
+          </figure>
         </div>
       </section>
 
@@ -178,9 +203,55 @@
         <ul class="notes" id="notes"></ul>
 
         <div class="actions">
-          <button class="btn" type="button" id="printBtn">Распечатать рецепт</button>
+          <button class="btn" type="button" id="saveBtn">Сохранить в журнал</button>
+          <button class="btn-ghost" type="button" id="copyBtn">Копировать рецепт</button>
+          <button class="btn-ghost" type="button" id="shareBtn">Ссылка на расчёт</button>
+          <button class="btn-ghost" type="button" id="printBtn">Печать</button>
           <button class="btn-ghost" type="button" id="resetAll">Начать заново</button>
         </div>
+        <p class="hint" id="actionMsg" aria-live="polite"></p>
+      </section>
+
+      <!-- IV. Сравнение спиртов -->
+      <section class="card step" aria-labelledby="h-cmp">
+        <header class="step-head">
+          <span class="numeral">IV</span>
+          <div>
+            <h2 id="h-cmp">Сравнение спиртов</h2>
+            <p class="step-sub">Тот же результат разными спиртами. Чем слабее спирт, тем сильнее он разбавляет вино. Нажмите строку, чтобы выбрать спирт.</p>
+          </div>
+        </header>
+        <div class="table-wrap">
+          <table class="params cmp" id="cmpTable">
+            <thead><tr><th>Спирт</th><th>Нужно</th><th>Итог</th><th>Вино в смеси</th><th>ТК</th><th>Безводного</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- V. Себестоимость -->
+      <section class="card step" aria-labelledby="h-cost">
+        <header class="step-head">
+          <span class="numeral">V</span>
+          <div>
+            <h2 id="h-cost">Розлив и себестоимость</h2>
+            <p class="step-sub">Цены в рублях, укажите свои. Пустое поле считается нулём.</p>
+          </div>
+        </header>
+        <div class="grid">
+          <label class="field"><span class="field-label">Вино <em>₽/л</em></span><input type="number" id="priceWine" step="1" min="0"></label>
+          <label class="field"><span class="field-label">Спирт <em>₽/л</em></span><input type="number" id="priceSpirit" step="1" min="0"></label>
+          <label class="field"><span class="field-label">Сахар <em>₽/кг</em></span><input type="number" id="priceSugar" step="1" min="0"></label>
+          <label class="field"><span class="field-label">Концентрат <em>₽/л</em></span><input type="number" id="priceRcs" step="1" min="0"></label>
+          <label class="field"><span class="field-label">Бутылка</span>
+            <select id="bottleSize">
+              <option value="0.375">0,375 л</option><option value="0.5">0,5 л</option><option value="0.7">0,7 л</option>
+              <option value="0.75">0,75 л</option><option value="1">1 л</option><option value="1.5">1,5 л (магнум)</option>
+            </select></label>
+          <label class="field"><span class="field-label">Бутылка + пробка <em>₽</em></span><input type="number" id="priceBottle" step="1" min="0"></label>
+        </div>
+        <div class="recipe" id="costOut"></div>
+        <div class="cost-bar" id="costBar"></div>
       </section>
     </div>
 
@@ -246,6 +317,99 @@
       </div>
     </aside>
   </main>
+
+  <!-- Мастерская -->
+  <section class="panel workshop" id="panel-tools" role="tabpanel" hidden>
+    <p class="panel-intro">Небольшие расчёты, которые нужны рядом с креплением. Значения подтягиваются из текущего вина, их можно менять.</p>
+    <div class="tools-grid">
+
+      <article class="card tool" id="toolBlend">
+        <h3>Купаж двух вин</h3>
+        <p class="tool-sub">Сколько взять каждого вина, чтобы получить нужный показатель (квадрат Пирсона).</p>
+        <div class="grid g2">
+          <label class="field span2"><span class="field-label">Показатель</span>
+            <select id="blParam"><option value="sugar">Сахар, г/л</option><option value="abv">Спирт, % об.</option><option value="ta">Кислотность, г/л</option></select></label>
+          <label class="field"><span class="field-label">Вино А</span><input type="number" id="blA" step="0.1"></label>
+          <label class="field"><span class="field-label">Вино Б</span><input type="number" id="blB" step="0.1"></label>
+          <label class="field"><span class="field-label">Нужно</span><input type="number" id="blT" step="0.1"></label>
+          <label class="field"><span class="field-label">Объём купажа <em>л</em></span><input type="number" id="blV" step="0.5" min="0"></label>
+        </div>
+        <div class="tool-out" id="blOut"></div>
+      </article>
+
+      <article class="card tool" id="toolAcid">
+        <h3>Кислотность</h3>
+        <p class="tool-sub">Подкисление или раскисление до нужной титруемой кислотности.</p>
+        <div class="grid g2">
+          <label class="field"><span class="field-label">ТК сейчас <em>г/л</em></span><input type="number" id="acNow" step="0.1" min="0"></label>
+          <label class="field"><span class="field-label">ТК нужна <em>г/л</em></span><input type="number" id="acT" step="0.1" min="0"></label>
+          <label class="field"><span class="field-label">Объём <em>л</em></span><input type="number" id="acV" step="0.5" min="0"></label>
+          <label class="field"><span class="field-label">Кислота</span><select id="acAcid"></select></label>
+          <label class="field span2"><span class="field-label">Раскислитель</span><select id="acBase"></select></label>
+        </div>
+        <div class="tool-out" id="acOut"></div>
+      </article>
+
+      <article class="card tool" id="toolSO2">
+        <h3>Сульфитация</h3>
+        <p class="tool-sub">Защитную силу SO₂ определяет молекулярная форма, а она зависит от pH.</p>
+        <div class="grid g2">
+          <label class="field"><span class="field-label">pH</span><input type="number" id="soPH" step="0.01" min="2.8" max="4.2"></label>
+          <label class="field"><span class="field-label">Свободный SO₂ сейчас <em>мг/л</em></span><input type="number" id="soFree" step="1" min="0"></label>
+          <label class="field"><span class="field-label">Цель молекулярного <em>мг/л</em></span>
+            <select id="soMol"><option value="0.5">0,5 (красные, крепкие)</option><option value="0.6" selected>0,6 (стандарт)</option><option value="0.8">0,8 (белые, сладкие)</option></select></label>
+          <label class="field"><span class="field-label">Объём <em>л</em></span><input type="number" id="soV" step="0.5" min="0"></label>
+        </div>
+        <div class="tool-out" id="soOut"></div>
+      </article>
+
+      <article class="card tool" id="toolDilute">
+        <h3>Разведение спирта</h3>
+        <p class="tool-sub">Сколько воды долить до нужной крепости с учётом контракции.</p>
+        <div class="grid g2">
+          <label class="field"><span class="field-label">Спирта <em>л</em></span><input type="number" id="dlV" step="0.1" min="0"></label>
+          <label class="field"><span class="field-label">Крепость <em>% об.</em></span><input type="number" id="dlA1" step="0.1" min="1" max="100"></label>
+          <label class="field span2"><span class="field-label">Нужная крепость <em>% об.</em></span><input type="number" id="dlA2" step="0.1" min="1" max="100"></label>
+        </div>
+        <div class="tool-out" id="dlOut"></div>
+      </article>
+
+      <article class="card tool" id="toolHydro">
+        <h3>Ареометр и сахар</h3>
+        <p class="tool-sub">Плотность сусла → °Brix, Боме, Эксле, сахар и потенциальный спирт; шаптализация до нужного потенциала.</p>
+        <div class="grid g2">
+          <label class="field"><span class="field-label">Плотность <em>г/см³ при 20 °C</em></span><input type="number" id="hySG" step="0.001" min="0.98" max="1.35"></label>
+          <label class="field"><span class="field-label">Объём сусла <em>л</em></span><input type="number" id="hyV" step="0.5" min="0"></label>
+          <label class="field span2"><span class="field-label">Нужный потенциальный спирт <em>% об.</em></span><input type="number" id="hyT" step="0.1" min="0" max="20"></label>
+        </div>
+        <div class="tool-out" id="hyOut"></div>
+      </article>
+
+      <article class="card tool" id="toolBottle">
+        <h3>Справка по стилям</h3>
+        <p class="tool-sub">Все стили в одной таблице. Нажмите, чтобы выбрать стиль в калькуляторе.</p>
+        <div class="table-wrap"><table class="params mini" id="styleRef"><thead><tr><th>Стиль</th><th>Спирт</th><th>Сахар</th><th>Способ</th></tr></thead><tbody></tbody></table></div>
+      </article>
+    </div>
+  </section>
+
+  <!-- Журнал -->
+  <section class="panel journal" id="panel-journal" role="tabpanel" hidden>
+    <div class="card">
+      <div class="journal-head">
+        <label class="field grow"><span class="field-label">Название партии</span><input type="text" id="jName" placeholder="Например: Портвейн-2026, бочка 3" maxlength="80"></label>
+        <button class="btn" type="button" id="jSave">Сохранить текущий расчёт</button>
+      </div>
+      <div class="journal-tools">
+        <button class="btn-ghost" type="button" id="jExport">Экспорт JSON</button>
+        <button class="btn-ghost" type="button" id="jCsv">Экспорт CSV</button>
+        <label class="btn-ghost file-btn">Импорт JSON<input type="file" id="jImport" accept="application/json,.json"></label>
+        <button class="btn-ghost danger" type="button" id="jClear">Очистить журнал</button>
+      </div>
+      <p class="hint" id="jMsg" aria-live="polite">Журнал хранится только в этом браузере. Чтобы перенести его, сделайте экспорт.</p>
+    </div>
+    <div class="journal-list" id="jList"></div>
+  </section>
 
   <footer class="foot">
     Vinum Fortis · расчёт по уравнениям баланса спирта и сахара с поправкой на контракцию. Прогноз pH и плотности приближённый.

@@ -128,6 +128,7 @@
       density, brix: 261.3 * (1 - 1 / density), baume: 145 * (1 - 1 / density),
       kcal: sol.abv * 0.789 * 7 + sol.sugar / 10 * 4,
       sugarAcid: ta > 0 ? sol.sugar / ta : 0,
+      molSO2: molecularSO2(wine.freeSO2 * d, pH),
       dilution: d,
       sweetness: sweetnessClass(sol.sugar)
     };
@@ -142,6 +143,7 @@
       brix: 261.3 * (1 - 1 / density), baume: 145 * (1 - 1 / density),
       kcal: wine.abv * 0.789 * 7 + wine.sugar / 10 * 4,
       sugarAcid: wine.ta > 0 ? wine.sugar / wine.ta : 0, dilution: 1,
+      molSO2: molecularSO2(wine.freeSO2, wine.pH),
       sweetness: sweetnessClass(wine.sugar)
     };
   }
@@ -184,7 +186,10 @@
     }
     if (style.ta && pred.ta > style.ta[1]) r.push(`Кислотность ${pred.ta.toFixed(1)} г/л выше стиля: купаж с менее кислым вином, холодная стабилизация или раскисление карбонатом кальция.`);
     if (style.pH && pred.pH > style.pH[1]) r.push(`pH ${pred.pH.toFixed(2)} высоковат: риск микробной порчи, следите за свободным SO₂.`);
-    if (pred.freeSO2 < 15 && pred.sugar > 20 && pred.abv < 17) r.push('Свободного SO₂ мало для сладкого вина ниже 17 %: стоит поднять до 25–35 мг/л.');
+    if (pred.sugar > 20 && pred.abv < 17 && pred.molSO2 < 0.5) {
+      const need = freeSO2ForMolecular(0.6, pred.pH);
+      r.push(`Молекулярный SO₂ ${pred.molSO2.toFixed(2)} мг/л: для сладкого вина ниже 17 % лучше 0.5–0.8. Поднимите свободный SO₂ до ≈ ${Math.ceil(need)} мг/л (метабисульфит ≈ ${kmsGrams(need - pred.freeSO2, Vf).toFixed(1)} г на партию).`);
+    }
     if (pred.va > 1.2) r.push(`Летучая кислотность ${pred.va.toFixed(2)} г/л высокая: проверьте вино перед креплением.`);
     if (pred.sugarAcid > 0 && style.sai && (pred.sugarAcid < style.sai[0] || pred.sugarAcid > style.sai[1]))
       r.push(`Сахарно-кислотный индекс ${pred.sugarAcid.toFixed(0)} вне типичного для стиля (${style.sai[0]}–${style.sai[1]}): вкус будет ${pred.sugarAcid < style.sai[0] ? 'резче и кислее' : 'приторнее'} эталона.`);
@@ -225,7 +230,107 @@
     return lo;
   }
 
+
+  /* Прямой расчёт: пользователь задал свои дозы, считаем результат. */
+  function forward({ Vw, aw, Sw, as, spiritL = 0, sugarG = 0, rcsL = 0, rcsConc = 860, useContraction = true }) {
+    const errors = [];
+    if (!(Vw > 0)) errors.push('Объём вина должен быть больше нуля.');
+    if (!(as > 0 && as <= 100)) errors.push('Крепость спирта должна быть от 0 до 100 % об.');
+    if ([spiritL, sugarG, rcsL].some(v => !(v >= 0))) errors.push('Дозы не могут быть отрицательными.');
+    if (![aw, Sw].every(v => v >= 0)) errors.push('Заполните крепость и сахар вина.');
+    if (errors.length) return { ok: false, errors };
+    const res = mix({ Vw, aw, Sw, Vs: spiritL, as, sugarG, rcsL, rcsConc, useContraction });
+    const warnings = [];
+    if (spiritL / Vw > 0.45) warnings.push('Спирта очень много относительно объёма вина.');
+    return { ok: true, warnings, spiritL, absAlcoholL: spiritL * as / 100, sugarG, rcsL, ...res };
+  }
+
+  /* Молекулярный SO2 (мг/л) по свободному SO2 и pH; pKa1 ≈ 1.81. */
+  const molecularSO2 = (free, pH) => free / (1 + Math.pow(10, pH - 1.81));
+  const freeSO2ForMolecular = (mol, pH) => mol * (1 + Math.pow(10, pH - 1.81));
+  /* Метабисульфит калия: 57.6 % SO2. Возвращает граммы на объём. */
+  const kmsGrams = (deltaFree, V) => Math.max(0, deltaFree) * V / 1000 / 0.576;
+
+  /* Кислотность: вещества и их эффект на ТК (по винной кислоте), г/л на 1 г/л вещества. */
+  const ACIDS = {
+    tartaric: { name: 'Винная кислота', factor: 1.0 },
+    citric: { name: 'Лимонная кислота', factor: 1.17 },
+    malic: { name: 'Яблочная кислота', factor: 1.12 },
+    lactic: { name: 'Молочная кислота', factor: 0.83 }
+  };
+  const BASES = {
+    khco3: { name: 'Бикарбонат калия KHCO₃', perG: 1.33 },
+    caco3: { name: 'Карбонат кальция CaCO₃', perG: 0.67 }
+  };
+  function acidAdjust(taNow, taTarget, V, acid = 'tartaric', base = 'khco3') {
+    const d = taTarget - taNow;
+    if (d >= 0) return { dir: 'up', grams: d / ACIDS[acid].factor * V, agent: ACIDS[acid].name, perL: d / ACIDS[acid].factor };
+    return { dir: 'down', grams: -d * BASES[base].perG * V, agent: BASES[base].name, perL: -d * BASES[base].perG };
+  }
+
+  /* Купаж двух компонентов по одному параметру (квадрат Пирсона, линейное смешение). */
+  function blend2(a, b, target, total) {
+    if (a === b) return null;
+    const fa = (target - b) / (a - b);
+    if (fa < 0 || fa > 1) return null;
+    return { fa, fb: 1 - fa, Va: total * fa, Vb: total * (1 - fa) };
+  }
+  /* Купаж нескольких показателей сразу при известных объёмах. */
+  function blendMix(parts) {
+    const V = parts.reduce((s, p) => s + p.V, 0);
+    const avg = k => parts.reduce((s, p) => s + p[k] * p.V, 0) / V;
+    return { V, abv: avg('abv'), sugar: avg('sugar'), ta: avg('ta') };
+  }
+
+  /* Разведение спирта водой с учётом контракции: сколько воды добавить к V1 л крепостью a1, чтобы получить a2. */
+  function diluteSpirit(V1, a1, a2) {
+    if (!(V1 > 0) || !(a1 > a2) || !(a2 > 0)) return null;
+    let lo = 0, hi = V1 * a1 / a2 * 2;
+    for (let i = 0; i < 80; i++) {
+      const W = (lo + hi) / 2;
+      const r = mix({ Vw: W, aw: 0, Sw: 0, Vs: V1, as: a1 });
+      if (r.abv > a2) lo = W; else hi = W;
+    }
+    const W = (lo + hi) / 2, r = mix({ Vw: W, aw: 0, Sw: 0, Vs: V1, as: a1 });
+    return { water: W, Vf: r.Vf, contraction: V1 + W - r.Vf, naive: V1 * a1 / a2 - V1 };
+  }
+
+  /* Ареометрия: из плотности (SG при 20 °C) — °Brix, Боме, Эксле, сахар, потенциальный спирт. */
+  function fromSG(sg, k = SUGAR_PER_ABV) {
+    const brix = sg > 1 ? sugarToBrix(Math.max(0, (sg - 0.9982 - 0.010) / 0.000375)) : 0;
+    const sugar = Math.max(0, (sg - 0.9982 - 0.010) / 0.000375);
+    return { sg, brix: 261.3 * (1 - 1 / sg), baume: 145 * (1 - 1 / sg), oechsle: (sg - 1) * 1000, sugar, potAbv: sugar / k, brixBySugar: brix };
+  }
+
+  /* Себестоимость партии. */
+  function cost({ Vw, wineL = 0, spiritL, spiritPrice = 0, sugarG = 0, sugarPrice = 0, rcsL = 0, rcsPrice = 0, Vf, bottle = 0.75, bottlePrice = 0 }) {
+    const parts = {
+      wine: Vw * wineL,
+      spirit: spiritL * spiritPrice,
+      sugar: sugarG / 1000 * sugarPrice,
+      rcs: rcsL * rcsPrice
+    };
+    const bottles = bottle > 0 ? Math.floor(Vf / bottle + 1e-9) : 0;
+    parts.bottles = bottles * bottlePrice;
+    const total = Object.values(parts).reduce((a, b) => a + b, 0);
+    return { parts, total, perL: total / Vf, bottles, perBottle: bottles ? total / bottles : 0, rest: Vf - bottles * bottle };
+  }
+
+  /* Кривая мутажа: что будет при внесении спирта на разной сброжённости. */
+  function mutageCurve({ Vw, sugar0, k = SUGAR_PER_ABV, as, targetAbv, useContraction = true, steps = 50 }) {
+    const pts = [];
+    for (let i = 0; i <= steps; i++) {
+      const p = 100 * i / steps, m = mustState(sugar0, p, k);
+      if (m.abv >= targetAbv) break;
+      const s = solve({ Vw, aw: m.abv, Sw: m.sugar, as, targetAbv, targetSugar: 0, useContraction });
+      if (!s.ok) break;
+      pts.push({ p, sugar: s.sugar, spiritL: s.spiritL, Vf: s.Vf, mustSugar: m.sugar });
+    }
+    return pts;
+  }
+
   return {
+    forward, molecularSO2, freeSO2ForMolecular, kmsGrams, ACIDS, BASES, acidAdjust, blend2, blendMix, diluteSpirit, fromSG, cost, mutageCurve,
     CONTRACTION_TABLE, SUCROSE_L_PER_G, SUGAR_PER_ABV,
     contraction, mustState, mix, solve, validate, predict, baseline,
     sweetnessClass, rangeStatus, styleCheck, recommendations, optimalMutage,

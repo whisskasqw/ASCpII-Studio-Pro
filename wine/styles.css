@@ -97,7 +97,7 @@ h2 { font: 500 28px/1.15 var(--serif); margin: 2px 0 4px; color: var(--ink); }
 .sub-h { font: 500 15px/20px var(--sans); color: var(--ink); margin: 32px 0 12px; }
 
 /* ——— поля ——— */
-.grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 12px; margin: 16px 0; }
+.grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 12px; margin: 16px 0; align-items: end; }
 .span2 { grid-column: span 2; }
 .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .field.grow { flex: 1 1 220px; }
@@ -207,7 +207,9 @@ input[type=range] { width: 100%; accent-color: var(--garnet); height: 24px; marg
 .notes li::before { content: ''; position: absolute; left: 16px; top: 19px; width: 6px; height: 6px; border-radius: 50%; background: var(--ink-muted); }
 .notes li.warn::before { background: var(--out); }
 .notes li.good::before { background: var(--ok); }
-.actions { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+.actions { display: flex; gap: 8px; margin-top: 24px; flex-wrap: wrap; }
+.actions #resetAll { margin-left: auto; border-color: transparent; color: var(--ink-soft); }
+.actions #resetAll:hover { color: var(--ink); }
 
 /* ——— сцена: бокал, ареометр, этикетка ——— */
 .stage-inner { display: grid; gap: 24px; }
@@ -258,6 +260,105 @@ input[type=range] { width: 100%; accent-color: var(--garnet); height: 24px; marg
 .seal-text { font: 600 17px var(--serif); fill: #fbefcf; letter-spacing: .04em; }
 
 .foot { position: relative; z-index: 1; max-width: 1240px; margin: 0 auto; padding: 24px 24px 40px; border-top: 1px solid var(--line); font-size: 13px; line-height: 20px; color: var(--ink-muted); }
+
+
+/* ——— вкладки ——— */
+.tabs { max-width: 1240px; margin: 0 auto; padding: 0 24px; display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--line); }
+.tab { appearance: none; border: 0; background: none; cursor: pointer; padding: 12px 12px; margin-bottom: -1px; font: 500 14px/20px var(--sans); color: var(--ink-soft); border-bottom: 2px solid transparent; white-space: nowrap; transition: color .15s var(--ease), border-color .15s var(--ease); }
+.tab:hover { color: var(--ink); }
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--garnet); }
+.tab:focus-visible { outline: 2px solid var(--garnet-soft); outline-offset: -4px; border-radius: 6px; }
+.count { display: inline-block; margin-left: 6px; font: 400 12px/1 var(--mono); color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.count:empty { display: none; }
+.panel-intro { color: var(--ink-soft); margin: 0 0 24px; max-width: 70ch; font-size: 15px; line-height: 22px; }
+.workshop, .journal { position: relative; z-index: 1; max-width: 1240px; margin: 0 auto; padding: 32px 24px 48px; }
+
+/* ——— доп. блоки калькулятора ——— */
+.steps > .card > .segmented { margin-bottom: 4px; }
+.dose-block { margin: 8px 0 4px; padding: 16px 16px 4px; border-radius: 12px; border: 1px solid var(--line); }
+.dose-block .grid { margin: 0 0 8px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.dose-block .hint { margin: 0 0 12px; }
+.chart-fig { margin: 8px 0 0; flex: 1 1 100%; }
+.chart-fig figcaption { font-size: 13px; line-height: 20px; color: var(--ink-soft); margin-bottom: 8px; }
+.chart { width: 100%; height: auto; display: block; background: var(--field); border: 1px solid var(--line); border-radius: 12px; }
+.chart .grid-line { stroke: var(--line); stroke-width: 1; }
+.chart .axis-text { font: 400 11px var(--mono); fill: var(--ink-muted); }
+.chart .axis-title { font: 400 11px var(--sans); fill: var(--ink-muted); }
+.chart .band { fill: color-mix(in srgb, var(--olive) 12%, transparent); }
+.chart .s-sugar { fill: none; stroke: var(--garnet); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .s-spirit { fill: none; stroke: var(--ink-muted); stroke-width: 1.5; stroke-dasharray: 4 4; stroke-linejoin: round; }
+.chart .target-line { stroke: var(--olive); stroke-width: 1; stroke-dasharray: 2 4; }
+.chart .now-line { stroke: var(--ink); stroke-width: 1; opacity: .4; }
+.chart .dot-sugar { fill: var(--garnet); stroke: var(--field); stroke-width: 2; }
+.chart .dot-spirit { fill: var(--ink-muted); stroke: var(--field); stroke-width: 2; }
+.chart .lbl { font: 500 12px var(--sans); }
+.chart .lbl.sugar { fill: var(--garnet); }
+.chart .lbl.spirit { fill: var(--ink-soft); }
+.chart .lbl.target { fill: var(--ok); }
+.chart .hit { fill: transparent; cursor: pointer; }
+
+.cmp tbody tr { cursor: pointer; transition: background-color .15s var(--ease); }
+.cmp tbody tr:hover { background: var(--paper-2); }
+.cmp tbody tr.current { background: var(--paper-2); box-shadow: inset 2px 0 0 var(--garnet); }
+.cmp tbody tr.current td:first-child { font-weight: 500; color: var(--ink); }
+.cmp tbody tr.disabled { cursor: default; opacity: .5; }
+.bar { display: inline-block; height: 4px; border-radius: 2px; background: var(--line-strong); vertical-align: middle; margin-right: 8px; }
+.cmp tbody tr.current .bar { background: var(--garnet); }
+
+.cost-bar { display: flex; gap: 2px; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 16px; background: var(--paper-2); }
+.cost-bar span { display: block; height: 100%; }
+.cost-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 8px; font-size: 13px; line-height: 20px; color: var(--ink-soft); }
+.cost-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 8px; vertical-align: 0; }
+
+/* ——— мастерская ——— */
+.tools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 24px; align-items: start; }
+.tool h3 { font: 500 24px/1.15 var(--serif); color: var(--ink); margin: 0 0 4px; }
+.tool-sub { margin: 0 0 8px; font-size: 13px; line-height: 20px; color: var(--ink-soft); }
+.grid.g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.tools-grid #toolBottle { grid-column: 1 / -1; }
+#styleRef td:nth-child(2), #styleRef td:nth-child(3) { font-family: var(--mono); font-size: 13px; white-space: nowrap; }
+.tool-out { padding: 12px 16px; border-radius: 8px; background: var(--paper-2); font-size: 14px; line-height: 20px; min-height: 48px; }
+.tool-out p { margin: 0; }
+.tool-out p + p { margin-top: 8px; }
+.tool-out b { font: 400 14px var(--mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+.tool-out .big { font: 500 28px/1.1 var(--sans); color: var(--ink); font-variant-numeric: tabular-nums; }
+.tool-out .muted { color: var(--ink-muted); font-size: 13px; }
+.tool-out .bad { color: var(--out); }
+.kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); gap: 8px 12px; }
+.kv div { display: flex; flex-direction: column; gap: 2px; }
+.kv small { font-size: 12px; color: var(--ink-muted); }
+.params.mini td, .params.mini th { padding: 6px 12px; height: 32px; font-size: 13px; }
+.params.mini tbody tr { cursor: pointer; transition: background-color .15s var(--ease); }
+.params.mini tbody tr:hover { background: var(--paper-2); }
+
+/* ——— журнал ——— */
+.journal-head { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+.journal-tools { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+.file-btn { display: inline-flex; align-items: center; position: relative; overflow: hidden; }
+.file-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.btn-ghost.danger { color: var(--out); }
+.btn-ghost.danger:hover { border-color: var(--out); background: transparent; }
+.journal-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; margin-top: 24px; }
+.entry { padding: 20px; }
+.entry h3 { display: flex; align-items: center; gap: 8px; font: 500 22px/1.15 var(--serif); margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+.entry h3::before { content: ''; flex: none; width: 12px; height: 12px; border-radius: 50%; background: var(--hue, var(--garnet)); box-shadow: inset 0 -2px 4px rgba(0, 0, 0, .25); }
+.entry .meta { font-size: 13px; line-height: 20px; color: var(--ink-muted); margin: 4px 0 12px; }
+.entry .figs { display: flex; gap: 16px; flex-wrap: wrap; font: 400 13px var(--mono); font-variant-numeric: tabular-nums; }
+.entry .figs span small { font-family: var(--sans); color: var(--ink-muted); margin-left: 4px; }
+.entry .row { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+.entry .row button { height: 32px; font-size: 13px; padding: 0 12px; }
+.empty { padding: 48px 20px; text-align: center; color: var(--ink-muted); font-size: 15px; line-height: 22px; grid-column: 1 / -1; border: 1px dashed var(--line-strong); border-radius: var(--radius); }
+
+@media (max-width: 560px) {
+  .tabs { padding: 0 8px; }
+  .workshop, .journal { padding: 20px 16px 32px; }
+  .tools-grid { grid-template-columns: minmax(0, 1fr); }
+  .dose-block .grid { grid-template-columns: 1fr 1fr; }
+  .journal-list { grid-template-columns: minmax(0, 1fr); }
+}
+@media print {
+  .tabs, #panel-tools, #panel-journal, .chart-fig, .cost-bar { display: none !important; }
+}
 
 /* ——— адаптив ——— */
 @media (max-width: 1020px) {
